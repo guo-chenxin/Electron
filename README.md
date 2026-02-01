@@ -1,45 +1,35 @@
-# electron-vite-vue
+## electron-vite-vue
+🥳 一个非常简洁的 Electron + Vue + Vite 脚手架模板。
 
-🥳 Really simple `Electron` + `Vue` + `Vite` boilerplate.
+## 特性
+📦 开箱即用
+🎯 基于官方 template-vue-ts，侵入性极小
+🌱 可扩展性强，目录结构极其简洁
+💪 支持在 Electron 渲染进程（Renderer）中使用 Node.js API
+🔩 支持 C/C++ 原生插件（Native Addons）
+🖥 轻松实现多窗口应用
 
-<!-- [![awesome-vite](https://awesome.re/mentioned-badge.svg)](https://github.com/vitejs/awesome-vite) -->
-<!-- [![Netlify Status](https://api.netlify.com/api/v1/badges/ae3863e3-1aec-4eb1-8f9f-1890af56929d/deploy-status)](https://app.netlify.com/sites/electron-vite/deploys) -->
-<!-- [![GitHub license](https://img.shields.io/github/license/caoxiemeihao/electron-vite-vue)](https://github.com/electron-vite/electron-vite-vue/blob/main/LICENSE) -->
-<!-- [![GitHub stars](https://img.shields.io/github/stars/caoxiemeihao/electron-vite-vue?color=fa6470)](https://github.com/electron-vite/electron-vite-vue) -->
-<!-- [![GitHub forks](https://img.shields.io/github/forks/caoxiemeihao/electron-vite-vue)](https://github.com/electron-vite/electron-vite-vue) -->
-[![GitHub Build](https://github.com/electron-vite/electron-vite-vue/actions/workflows/build.yml/badge.svg)](https://github.com/electron-vite/electron-vite-vue/actions/workflows/build.yml)
-[![GitHub Discord](https://img.shields.io/badge/chat-discord-blue?logo=discord)](https://discord.gg/sRqjYpEAUK)
-
-## Features
-
-📦 Out of the box  
-🎯 Based on the official [template-vue-ts](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-vue-ts), less invasive  
-🌱 Extensible, really simple directory structure  
-💪 Support using Node.js API in Electron-Renderer  
-🔩 Support C/C++ native addons  
-🖥 It's easy to implement multiple windows  
-
-## Quick Setup
+## 快速开始
 
 ```sh
-# clone the project
-git clone https://github.com/electron-vite/electron-vite-vue.git
+# 克隆项目
+git clone https://github.com/guo-chenxin/Electron.git
 
-# enter the project directory
+# 进入项目目录
 cd electron-vite-vue
 
-# install dependency
+# 安装依赖
 npm install
 
-# develop
+# 启动开发模式
 npm run dev
 ```
 
-## Debug
+## 调试演示
 
 ![electron-vite-react-debug.gif](https://github.com/electron-vite/electron-vite-react/blob/main/electron-vite-react-debug.gif?raw=true)
 
-## Directory
+## 目录结构
 
 ```diff
 + ├─┬ electron
@@ -53,27 +43,3 @@ npm run dev
   ├── package.json
   └── vite.config.ts
 ```
-
-<!--
-## Be aware
-
-🚨 By default, this template integrates Node.js in the Renderer process. If you don't need it, you just remove the option below. [Because it will modify the default config of Vite](https://github.com/electron-vite/vite-plugin-electron-renderer#config-presets-opinionated).
-
-```diff
-# vite.config.ts
-
-export default {
-  plugins: [
--   // Use Node.js API in the Renderer-process
--   renderer({
--     nodeIntegration: true,
--   }),
-  ],
-}
-```
--->
-
-## FAQ
-
-- [C/C++ addons, Node.js modules - Pre-Bundling](https://github.com/electron-vite/vite-plugin-electron-renderer#dependency-pre-bundling)
-- [dependencies vs devDependencies](https://github.com/electron-vite/vite-plugin-electron-renderer#dependencies-vs-devdependencies)
