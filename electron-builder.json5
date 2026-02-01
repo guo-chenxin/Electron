@@ -1,15 +1,32 @@
 // @see https://www.electron.build/configuration/configuration
 {
   "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
-  "appId": "YourAppID",
+  "appId": "com.electron.app",
   "asar": true,
-  "productName": "YourAppName",
+  "productName": "Electron App",
+  "copyright": "Copyright © 2026 Electron App",
   "directories": {
     "output": "release/${version}"
   },
   "files": [
     "dist",
-    "dist-electron"
+    "dist-electron",
+    "node_modules"
+  ],
+  "buildDependenciesFromSource": false,
+  "asarUnpack": [
+    "node_modules/better-sqlite3/**/*",
+    "node_modules/keytar/**/*"
+  ],
+  "extraResources": [
+    {
+      "from": "node_modules/better-sqlite3/build/Release/better_sqlite3.node",
+      "to": "node_modules/better-sqlite3/build/Release/better_sqlite3.node"
+    },
+    {
+      "from": "node_modules/keytar/build/Release/keytar.node",
+      "to": "node_modules/keytar/build/Release/keytar.node"
+    }
   ],
   "mac": {
     "target": [

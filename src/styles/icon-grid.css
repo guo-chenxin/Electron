@@ -1,0 +1,74 @@
+/* 全局样式：图标选择器网格布局 */
+.el-select-dropdown.icon-grid-select-popper {
+  width: 320px !important;
+  min-width: 320px !important;
+}
+
+.el-select-dropdown.icon-grid-select-popper .el-select-dropdown__wrap {
+  max-height: 300px !important;
+  overflow-y: auto !important;
+}
+
+.el-select-dropdown.icon-grid-select-popper .el-select-dropdown__list {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  padding: 8px !important;
+  gap: 8px !important;
+  flex-direction: row !important;
+  list-style: none !important;
+  margin: 0 !important;
+}
+
+.el-select-dropdown.icon-grid-select-popper .el-select-dropdown__item {
+  width: calc(33.33% - 8px) !important;
+  margin: 0 !important;
+  padding: 8px !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  height: auto !important;
+  line-height: normal !important;
+  min-height: 60px !important;
+  float: none !important;
+  clear: none !important;
+}
+
+.el-select-dropdown.icon-grid-select-popper .el-select-dropdown__item:hover {
+  background-color: #ecf5ff !important;
+}
+
+.el-select-dropdown.icon-grid-select-popper .el-select-dropdown__item.selected {
+  background-color: #e6f2ff !important;
+  color: #1890ff !important;
+}
+
+/* 图标网格项样式 */
+.el-select-dropdown.icon-grid-select-popper .icon-grid-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  text-align: center;
+  cursor: pointer;
+}
+
+.el-select-dropdown.icon-grid-select-popper .icon-grid-preview {
+  font-size: 24px;
+  width: 24px;
+  text-align: center;
+  font-style: normal;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.el-select-dropdown.icon-grid-select-popper .icon-grid-label {
+  font-size: 12px;
+  color: #303133;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  margin-top: 4px;
+}

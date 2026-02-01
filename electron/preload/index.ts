@@ -1,7 +1,22 @@
 import { ipcRenderer, contextBridge } from 'electron'
 
 // --------- Expose some API to the Renderer process ---------
-contextBridge.exposeInMainWorld('ipcRenderer', {
+contextBridge.exposeInMainWorld('electronAPI', {
+  // 窗口控制API
+  windowMinimize: () => {
+    ipcRenderer.send('window-minimize')
+  },
+  windowMaximize: () => {
+    ipcRenderer.send('window-maximize')
+  },
+  windowTogglePin: () => {
+    ipcRenderer.send('window-toggle-pin')
+  },
+  windowClose: () => {
+    ipcRenderer.send('window-close')
+  },
+  
+  // 原有的IPC API
   on(...args: Parameters<typeof ipcRenderer.on>) {
     const [channel, listener] = args
     return ipcRenderer.on(channel, (event, ...args) => listener(event, ...args))
@@ -18,9 +33,6 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
     const [channel, ...omit] = args
     return ipcRenderer.invoke(channel, ...omit)
   },
-
-  // You can expose other APTs you need here.
-  // ...
 })
 
 // --------- Preload scripts loading ---------
