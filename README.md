@@ -1,14 +1,3 @@
-## electron-vite-vue
-🥳 一个非常简洁的 Electron + Vue + Vite 脚手架模板。
-
-## 特性
-📦 开箱即用
-🎯 基于官方 template-vue-ts，侵入性极小
-🌱 可扩展性强，目录结构极其简洁
-💪 支持在 Electron 渲染进程（Renderer）中使用 Node.js API
-🔩 支持 C/C++ 原生插件（Native Addons）
-🖥 轻松实现多窗口应用
-
 ## 快速开始
 
 ```sh
