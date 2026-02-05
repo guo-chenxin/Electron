@@ -49,7 +49,8 @@ if (!app.requestSingleInstanceLock()) {
 let mainWindow: BrowserWindow | null = null
 const secondaryWindows: Map<string, BrowserWindow> = new Map()
 
-const preload = path.join(__dirname, '../preload/index.mjs')
+// 预加载脚本路径，在开发模式和生产模式下都能正确找到
+const preload = path.join(process.env.APP_ROOT, 'dist-electron/preload/index.mjs')
 const indexHtml = path.join(RENDERER_DIST, 'index.html')
 
 // 创建主窗口

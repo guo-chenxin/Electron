@@ -1,5 +1,8 @@
 <template>
-  <div class="other-project-layout">
+  <div class="main-window-layout">
+    <!-- 左侧菜单组件 -->
+    <MainWindowMenu />
+    
     <!-- 右侧内容区域 -->
     <div class="right-content">
       <!-- 根据路由动态渲染内容 -->
@@ -10,13 +13,11 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { useAuth } from '../../composables/useAuth'
-
-const { isLoggedIn } = useAuth()
+import MainWindowMenu from './MainWindowMenu.vue'
 </script>
 
 <style scoped>
-.other-project-layout {
+.main-window-layout {
   width: 100%;
   height: 100%;
   background-color: #f5f7fa;

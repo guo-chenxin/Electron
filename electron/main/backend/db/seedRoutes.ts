@@ -15,8 +15,8 @@ const baseRoutes: CreateRouteRequest[] = [
     requiresAuth: false,
     showInMenu: true,
     showInTabs: true,
-    alwaysShow: true,
-    order: 1,
+
+    order: 999,
     redirect: '/main/all-projects'
   },
   {

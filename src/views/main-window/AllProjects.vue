@@ -21,7 +21,7 @@
       <div class="add-card" @click="showAddDialog = true">
         <div class="add-card-content">
           <span class="add-card-icon i-carbon-add">+</span>
-          <span class="add-card-text">添加新项目</span>
+          <span class="add-card-text">新建项目</span>
         </div>
       </div>
     </div>
@@ -36,7 +36,7 @@
     <!-- 编辑卡片对话框 -->
     <AddCardDialog 
       :visible="showEditDialog" 
-      :card-data="selectedCard" 
+      :card-data="selectedCardData" 
       @save="handleEditCard" 
       @close="showEditDialog = false" 
     />
@@ -64,7 +64,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import ProjectCard from '../../components/main-window/ProjectCard.vue'
@@ -92,8 +92,23 @@ interface Card {
   description: string
   icon: string
   isFavorite: boolean
-  type: string
+  type?: string
   routePath: string
+  redirect?: string
+  showInMenu?: boolean
+  showInTabs?: boolean
+  requiresAuth?: boolean
+  order?: number
+  menuItems?: Array<{
+    title: string
+    icon: string
+    routePath: string
+    component?: string
+    requiresAuth?: boolean
+    showInMenu?: boolean
+    showInTabs?: boolean
+    order?: number
+  }>
   lastClickedAt: string
   createdAt: string
   updatedAt: string
@@ -106,6 +121,25 @@ const cards = ref<Card[]>([])
 const contextMenuVisible = ref(false)
 const contextMenuPosition = ref({ x: 0, y: 0 })
 const selectedCard = ref<Card | null>(null)
+
+// 计算属性：将selectedCard转换为CardData类型
+const selectedCardData = computed(() => {
+  if (!selectedCard.value) return undefined
+  
+  return {
+    id: selectedCard.value.id,
+    title: selectedCard.value.title,
+    description: selectedCard.value.description,
+    icon: selectedCard.value.icon,
+    routePath: selectedCard.value.routePath,
+    redirect: selectedCard.value.redirect || '',
+    showInMenu: selectedCard.value.showInMenu !== undefined ? selectedCard.value.showInMenu : true,
+    showInTabs: selectedCard.value.showInTabs !== undefined ? selectedCard.value.showInTabs : true,
+    requiresAuth: selectedCard.value.requiresAuth !== undefined ? selectedCard.value.requiresAuth : false,
+    order: selectedCard.value.order !== undefined ? selectedCard.value.order : 999,
+    menuItems: selectedCard.value.menuItems || []
+  }
+})
 
 // 加载卡片数据
 const loadCards = async () => {

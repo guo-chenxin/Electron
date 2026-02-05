@@ -3,6 +3,8 @@ import { userService } from '../../services/userService';
 import { verificationCodeService } from '../../services/verificationCodeService';
 import { tokenService } from '../../services/tokenService';
 import { UserValidator } from '../../validators/userValidator';
+import { ResponseHandler } from '../../utils/responseUtils';
+import { ErrorHandler, AppError } from '../../utils/errorUtils';
 
 /**
  * 注册认证相关API路由
@@ -12,10 +14,12 @@ export function registerAuthRoutes(): void {
   ipcMain.handle('api:auth:sendVerificationCode', async (_, email: string) => {
     try {
       // 在Electron环境中，IP地址默认为127.0.0.1
-      return await verificationCodeService.sendVerificationCode(email, '127.0.0.1');
+      const result = await verificationCodeService.sendVerificationCode(email, '127.0.0.1');
+      return ResponseHandler.createSuccessResponse(result, '验证码发送成功');
     } catch (error) {
       console.error('Error in sendVerificationCode:', error);
-      throw error;
+      const errorMessage = error instanceof Error ? error.message : '验证码发送失败';
+      return ResponseHandler.createErrorResponse(errorMessage, 500);
     }
   });
 
@@ -90,7 +94,6 @@ export function registerAuthRoutes(): void {
       
       // 返回用户信息和令牌
       const result = {
-        success: true,
         user: {
           id: user.id,
           username: user.username,
@@ -103,10 +106,11 @@ export function registerAuthRoutes(): void {
       };
       console.log('[DEBUG] Login successful, returning result:', result);
       
-      return result;
+      return ResponseHandler.createSuccessResponse(result, '登录成功');
     } catch (error) {
       console.error('[ERROR] Login with code failed:', error);
-      throw error;
+      const errorMessage = error instanceof Error ? error.message : '登录失败';
+      return ResponseHandler.createErrorResponse(errorMessage, 400);
     }
   });
   
@@ -148,8 +152,7 @@ export function registerAuthRoutes(): void {
       await tokenService.saveRefreshToken(user.id, refreshToken);
       
       // 返回用户信息和令牌
-      return {
-        success: true,
+      const result = {
         user: {
           id: user.id,
           username: user.username,
@@ -160,19 +163,27 @@ export function registerAuthRoutes(): void {
         accessToken,
         refreshToken
       };
+      
+      return ResponseHandler.createSuccessResponse(result, '登录成功');
     } catch (error) {
       console.error('Error in loginWithPassword:', error);
-      throw error;
+      const errorMessage = error instanceof Error ? error.message : '登录失败';
+      return ResponseHandler.createErrorResponse(errorMessage, 400);
     }
   });
 
   // 获取当前用户信息
   ipcMain.handle('api:auth:getCurrentUser', async (_, userId: number) => {
     try {
-      return await userService.getById(userId);
+      const user = await userService.getById(userId);
+      if (!user) {
+        return ResponseHandler.createNotFoundResponse('用户不存在');
+      }
+      return ResponseHandler.createSuccessResponse(user, '获取用户信息成功');
     } catch (error) {
       console.error('Error in getCurrentUser:', error);
-      throw error;
+      const errorMessage = error instanceof Error ? error.message : '获取用户信息失败';
+      return ResponseHandler.createErrorResponse(errorMessage, 500);
     }
   });
 
@@ -183,13 +194,14 @@ export function registerAuthRoutes(): void {
       if (!newAccessToken) {
         throw new Error('刷新令牌失败');
       }
-      return {
-        success: true,
+      const result = {
         accessToken: newAccessToken
       };
+      return ResponseHandler.createSuccessResponse(result, '令牌刷新成功');
     } catch (error) {
       console.error('Error in refreshToken:', error);
-      throw error;
+      const errorMessage = error instanceof Error ? error.message : '令牌刷新失败';
+      return ResponseHandler.createErrorResponse(errorMessage, 401);
     }
   });
 
@@ -202,10 +214,11 @@ export function registerAuthRoutes(): void {
       // 清除系统保险箱中的refresh_token
       await tokenService.deleteRefreshToken(userId);
       
-      return { success: true };
+      return ResponseHandler.createSuccessResponse({}, '登出成功');
     } catch (error) {
       console.error('Error in logout:', error);
-      throw error;
+      const errorMessage = error instanceof Error ? error.message : '登出失败';
+      return ResponseHandler.createErrorResponse(errorMessage, 500);
     }
   });
 }

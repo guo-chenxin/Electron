@@ -7,18 +7,12 @@ import { Route, CreateRouteRequest, UpdateRouteRequest } from '../models';
 import { BaseService } from './baseService';
 import { convertUtcToLocal, getCurrentLocalTimeForSqlite } from '../utils/dateUtils';
 
-// 项目类型定义
-export enum ProjectType {
-  REGULAR = 'regular', // 常规项目（有菜单）
-  OTHER = 'other' // 其他项目（无菜单）
-}
+
 
 // 路由服务类
 export class RouteService extends BaseService<Route, CreateRouteRequest, UpdateRouteRequest> {
   protected tableName = 'routes';
   protected idField = 'id';
-
-
 
   /**
    * 将数据库字段映射为Route对象（处理下划线命名到驼峰命名的转换）
@@ -34,7 +28,6 @@ export class RouteService extends BaseService<Route, CreateRouteRequest, UpdateR
       redirect: row.redirect,
       parentId: row.parent_id,
       projectId: row.project_id,
-      projectType: row.project_type,
       title: row.title,
       icon: row.icon,
       requiresAuth: row.requires_auth === 1,
@@ -42,7 +35,6 @@ export class RouteService extends BaseService<Route, CreateRouteRequest, UpdateR
       keepAlive: row.keep_alive === 1,
       showInMenu: row.show_in_menu === 1,
       showInTabs: row.show_in_tabs === 1,
-      alwaysShow: row.always_show === 1,
       order: row.order,
       createdAt: convertUtcToLocal(row.created_at),
       updatedAt: convertUtcToLocal(row.updated_at)
@@ -50,15 +42,41 @@ export class RouteService extends BaseService<Route, CreateRouteRequest, UpdateR
   }
 
   /**
-   * 获取所有路由，包括嵌套路由结构
-   * @returns 嵌套结构的路由数组
+   * 验证路由路径唯一性
+   * @param path 路由路径
    */
-  getAllNested(): Route[] {
-    // 获取所有路由
-    const allRoutes = this.getAll();
+  private validateRoutePathUnique(path: string): void {
+    const existingRoute = this.getAll().find(route => route.path === path);
+    if (existingRoute) {
+      throw new Error(`Route with path "${path}" already exists`);
+    }
+  }
+
+  /**
+   * 验证父路由存在
+   * @param parentId 父路由ID
+   */
+  private validateParentRouteExists(parentId: number): void {
+    const parentRoute = this.getById(parentId);
+    if (!parentRoute) {
+      throw new Error(`Parent route with ID "${parentId}" does not exist`);
+    }
+  }
+
+  /**
+   * 验证路由路径格式
+   * @param path 路由路径
+   */
+  private validateRoutePathFormat(path: string): void {
+    // 确保路径以斜杠开头
+    if (!path.startsWith('/')) {
+      throw new Error(`Route path "${path}" must start with a slash`);
+    }
     
-    // 将路由转换为嵌套结构
-    return this.buildNestedRoutes(allRoutes);
+    // 避免重复斜杠
+    if (path.includes('//')) {
+      throw new Error(`Route path "${path}" contains duplicate slashes`);
+    }
   }
 
   /**
@@ -75,6 +93,83 @@ export class RouteService extends BaseService<Route, CreateRouteRequest, UpdateR
         ...route,
         children: this.buildNestedRoutes(routes, route.id)
       }));
+  }
+
+  /**
+   * 创建项目根路由
+   * @param projectName 项目名称
+   * @param cardId 卡片ID
+   * @returns 创建的根路由
+   */
+  private createProjectRootRoute(projectName: string, cardId: number): Route | null {
+    return this.create({
+      path: `/${projectName}`,
+      name: projectName,
+      projectId: cardId.toString(),
+      title: projectName.charAt(0).toUpperCase() + projectName.slice(1),
+      icon: 'i-carbon-folder',
+      requiresAuth: true,
+      showInMenu: true,
+      showInTabs: true,
+      order: 999,
+      redirect: `/${projectName}/home`
+    });
+  }
+
+  /**
+   * 创建项目首页路由
+   * @param projectName 项目名称
+   * @param cardId 卡片ID
+   * @param parentId 父路由ID
+   * @returns 创建的首页路由
+   */
+  private createProjectHomeRoute(projectName: string, cardId: number, parentId: number): Route | null {
+    return this.create({
+      path: `/${projectName}/home`,
+      name: `${projectName}-home`,
+      projectId: cardId.toString(),
+      title: '首页',
+      icon: 'i-carbon-home',
+      requiresAuth: true,
+      parentId: parentId,
+      showInMenu: true,
+      showInTabs: true,
+      order: 1
+    });
+  }
+
+  /**
+   * 创建项目设置路由
+   * @param projectName 项目名称
+   * @param cardId 卡片ID
+   * @param parentId 父路由ID
+   * @returns 创建的设置路由
+   */
+  private createProjectSettingsRoute(projectName: string, cardId: number, parentId: number): Route | null {
+    return this.create({
+      path: `/${projectName}/settings`,
+      name: `${projectName}-settings`,
+      projectId: cardId.toString(),
+      title: '设置',
+      icon: 'i-carbon-settings',
+      requiresAuth: true,
+      parentId: parentId,
+      showInMenu: true,
+      showInTabs: true,
+      order: 99
+    });
+  }
+
+  /**
+   * 获取所有路由，包括嵌套路由结构
+   * @returns 嵌套结构的路由数组
+   */
+  getAllNested(): Route[] {
+    // 获取所有路由
+    const allRoutes = this.getAll();
+    
+    // 将路由转换为嵌套结构
+    return this.buildNestedRoutes(allRoutes);
   }
 
   /**
@@ -100,9 +195,10 @@ export class RouteService extends BaseService<Route, CreateRouteRequest, UpdateR
     this.validateRoutePathFormat(data.path);
     
     const sql = `
-      INSERT INTO ${this.tableName} 
-      (path, name, component, redirect, parent_id, project_id, project_type, title, icon, requires_auth, permission, keep_alive, show_in_menu, show_in_tabs, always_show, "order")
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO ${this.tableName} (
+        path, name, component, redirect, parent_id, project_id, title, icon, requires_auth, permission, keep_alive, show_in_menu, show_in_tabs, "order"
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     
     // 准备参数，处理可选字段
@@ -113,7 +209,6 @@ export class RouteService extends BaseService<Route, CreateRouteRequest, UpdateR
       data.redirect || null,
       data.parentId || null,
       data.projectId || null,
-      data.projectType || null,
       data.title || null,
       data.icon || null,
       data.requiresAuth ? 1 : 0,
@@ -121,7 +216,6 @@ export class RouteService extends BaseService<Route, CreateRouteRequest, UpdateR
       data.keepAlive ? 1 : 0,
       data.showInMenu !== false ? 1 : 0,
       data.showInTabs !== false ? 1 : 0,
-      data.alwaysShow ? 1 : 0,
       data.order || 0
     ];
     
@@ -131,44 +225,6 @@ export class RouteService extends BaseService<Route, CreateRouteRequest, UpdateR
     } catch (error: any) {
       console.error('Failed to create route:', error.message);
       throw error;
-    }
-  }
-  
-  /**
-   * 验证路由路径唯一性
-   * @param path 路由路径
-   */
-  private validateRoutePathUnique(path: string): void {
-    const existingRoute = this.getAll().find(route => route.path === path);
-    if (existingRoute) {
-      throw new Error(`Route with path "${path}" already exists`);
-    }
-  }
-  
-  /**
-   * 验证父路由存在
-   * @param parentId 父路由ID
-   */
-  private validateParentRouteExists(parentId: number): void {
-    const parentRoute = this.getById(parentId);
-    if (!parentRoute) {
-      throw new Error(`Parent route with ID "${parentId}" does not exist`);
-    }
-  }
-  
-  /**
-   * 验证路由路径格式
-   * @param path 路由路径
-   */
-  private validateRoutePathFormat(path: string): void {
-    // 确保路径以斜杠开头
-    if (!path.startsWith('/')) {
-      throw new Error(`Route path "${path}" must start with a slash`);
-    }
-    
-    // 避免重复斜杠
-    if (path.includes('//')) {
-      throw new Error(`Route path "${path}" contains duplicate slashes`);
     }
   }
 
@@ -188,7 +244,6 @@ export class RouteService extends BaseService<Route, CreateRouteRequest, UpdateR
         redirect = COALESCE(?, redirect),
         parent_id = COALESCE(?, parent_id),
         project_id = COALESCE(?, project_id),
-        project_type = COALESCE(?, project_type),
         title = COALESCE(?, title),
         icon = COALESCE(?, icon),
         requires_auth = COALESCE(?, requires_auth),
@@ -196,7 +251,6 @@ export class RouteService extends BaseService<Route, CreateRouteRequest, UpdateR
         keep_alive = COALESCE(?, keep_alive),
         show_in_menu = COALESCE(?, show_in_menu),
         show_in_tabs = COALESCE(?, show_in_tabs),
-        always_show = COALESCE(?, always_show),
         "order" = COALESCE(?, "order"),
         updated_at = ?
       WHERE ${this.idField} = ?
@@ -209,7 +263,6 @@ export class RouteService extends BaseService<Route, CreateRouteRequest, UpdateR
       data.redirect,
       data.parentId,
       data.projectId,
-      data.projectType,
       data.title,
       data.icon,
       data.requiresAuth === undefined ? null : (data.requiresAuth ? 1 : 0),
@@ -217,7 +270,6 @@ export class RouteService extends BaseService<Route, CreateRouteRequest, UpdateR
       data.keepAlive === undefined ? null : (data.keepAlive ? 1 : 0),
       data.showInMenu === undefined ? null : (data.showInMenu ? 1 : 0),
       data.showInTabs === undefined ? null : (data.showInTabs ? 1 : 0),
-      data.alwaysShow === undefined ? null : (data.alwaysShow ? 1 : 0),
       data.order,
       getCurrentLocalTimeForSqlite(),
       id
@@ -231,143 +283,42 @@ export class RouteService extends BaseService<Route, CreateRouteRequest, UpdateR
       throw error;
     }
   }
-  
-  /**
-   * 根据路由路径自动识别项目类型
-   * @param path 路由路径
-   * @returns 项目类型
-   */
-  getProjectTypeFromPath(path: string): ProjectType {
-    // 根路径和主窗口相关路由不属于具体项目
-    if (path === '/' || path.startsWith('/main/')) {
-      return ProjectType.OTHER;
-    }
-    
-    // 提取项目名称
-    const pathParts = path.split('/').filter(Boolean);
-    if (pathParts.length === 0) {
-      return ProjectType.OTHER;
-    }
-    
-    // 检查是否为常规项目（有子路由且显示在菜单中）
-    const projectName = pathParts[0];
-    const projectRoute = this.getAll().find(route => route.path === `/${projectName}`);
-    
-    if (projectRoute && projectRoute.showInMenu && projectRoute.children && projectRoute.children.length > 0) {
-      return ProjectType.REGULAR;
-    }
-    
-    return ProjectType.OTHER;
-  }
-  
-  /**
-   * 检查是否为常规项目
-   * @param path 路由路径
-   * @returns 是否为常规项目
-   */
-  isRegularProject(path: string): boolean {
-    return this.getProjectTypeFromPath(path) === ProjectType.REGULAR;
-  }
-  
+
   /**
    * 为新项目创建对应的路由结构
    * @param projectName 项目名称
-   * @param projectType 项目类型
+   * @param cardId 卡片ID
    * @returns 创建的路由数组
    */
-  createProjectRoutes(projectName: string, projectType: string): Route[] {
-    const type = projectType === 'regular' ? ProjectType.REGULAR : ProjectType.OTHER;
+  createProjectRoutes(projectName: string, cardId: number): Route[] {
     const createdRoutes: Route[] = [];
     
     // 检查项目根路由是否已经存在
-    let projectRoute = this.getAll().find(route => route.path === `/${projectName}`);
+    let projectRoute: Route | null = this.getAll().find(route => route.path === `/${projectName}`) || null;
     
     // 只有当项目根路由不存在时才创建
     if (!projectRoute) {
-      projectRoute = this.create({
-        path: `/${projectName}`,
-        name: projectName, // 使用路由路径中的项目名称作为name
-        projectId: projectName, // 使用项目名称作为projectId
-        projectType: projectType,
-        title: projectName.charAt(0).toUpperCase() + projectName.slice(1), // 标题可以是首字母大写的形式
-        icon: 'i-carbon-folder',
-        requiresAuth: true,
-        showInMenu: type === ProjectType.REGULAR,
-        showInTabs: true,
-        alwaysShow: true,
-        order: 999, // 默认放在最后
-        redirect: `/${projectName}/home`
-      });
+      projectRoute = this.createProjectRootRoute(projectName, cardId);
     }
-    
+      
     if (projectRoute) {
       createdRoutes.push(projectRoute);
       
-      // 为常规项目创建默认子路由
-      if (type === ProjectType.REGULAR) {
-        // 检查首页子路由是否已经存在
-        const homeRouteExists = this.getAll().find(route => route.path === `/${projectName}/home`);
-        if (!homeRouteExists) {
-          const homeRoute = this.create({
-            path: `/${projectName}/home`,
-            name: `${projectName}-home`, // 使用英文的name
-            projectId: projectName,
-            projectType: projectType,
-            title: '首页', // 标题可以是中文的
-            icon: 'i-carbon-home',
-            requiresAuth: true,
-            parentId: projectRoute.id,
-            showInMenu: true,
-            showInTabs: true,
-            order: 1
-          });
-          if (homeRoute) {
-            createdRoutes.push(homeRoute);
-          }
+      // 检查首页子路由是否已经存在
+      const homeRouteExists = this.getAll().find(route => route.path === `/${projectName}/home`);
+      if (!homeRouteExists) {
+        const homeRoute = this.createProjectHomeRoute(projectName, cardId, projectRoute.id);
+        if (homeRoute) {
+          createdRoutes.push(homeRoute);
         }
-        
-        // 检查设置子路由是否已经存在
-        const settingsRouteExists = this.getAll().find(route => route.path === `/${projectName}/settings`);
-        if (!settingsRouteExists) {
-          const settingsRoute = this.create({
-            path: `/${projectName}/settings`,
-            name: `${projectName}-settings`, // 使用英文的name
-            projectId: projectName,
-            projectType: projectType,
-            title: '设置', // 标题可以是中文的
-            icon: 'i-carbon-settings',
-            requiresAuth: true,
-            parentId: projectRoute.id,
-            showInMenu: true,
-            showInTabs: true,
-            order: 99
-          });
-          if (settingsRoute) {
-            createdRoutes.push(settingsRoute);
-          }
-        }
-      } 
-      // 为其他项目创建简单的首页路由
-      else {
-        // 检查首页子路由是否已经存在
-        const homeRouteExists = this.getAll().find(route => route.path === `/${projectName}/home`);
-        if (!homeRouteExists) {
-          const homeRoute = this.create({
-            path: `/${projectName}/home`,
-            name: `${projectName}-home`,
-            projectId: projectName,
-            projectType: projectType,
-            title: '首页',
-            icon: 'i-carbon-home',
-            requiresAuth: true,
-            parentId: projectRoute.id,
-            showInMenu: false,
-            showInTabs: true
-          });
-          
-          if (homeRoute) {
-            createdRoutes.push(homeRoute);
-          }
+      }
+      
+      // 检查设置子路由是否已经存在
+      const settingsRouteExists = this.getAll().find(route => route.path === `/${projectName}/settings`);
+      if (!settingsRouteExists) {
+        const settingsRoute = this.createProjectSettingsRoute(projectName, cardId, projectRoute.id);
+        if (settingsRoute) {
+          createdRoutes.push(settingsRoute);
         }
       }
     }

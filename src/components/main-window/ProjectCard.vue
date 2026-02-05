@@ -8,7 +8,7 @@
     <div v-if="isFavorite" class="favorite-indicator"></div>
     
     <div class="card-content">
-      <span class="card-icon" :class="icon"></span>
+      <span class="card-icon" :class="icon || 'i-carbon-folder'"></span>
       <h2 class="card-title">{{ title }}</h2>
       <p class="card-description">{{ description }}</p>
     </div>

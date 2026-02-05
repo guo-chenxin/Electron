@@ -20,8 +20,8 @@ export default defineConfig(({ command }) => {
       }
     },
     plugins: [
-      vue(),
       UnoCSS(),
+      vue(),
       electron({
         main: {
           // Shortcut of `build.lib.entry`

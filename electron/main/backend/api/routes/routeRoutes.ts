@@ -70,21 +70,11 @@ export function registerRouteRoutes(): void {
   });
   
   // 创建项目路由
-  ipcMain.handle('api:routes:createProjectRoutes', (_, projectName: string, projectType: string) => {
+  ipcMain.handle('api:routes:createProjectRoutes', (_, projectName: string, cardId: number) => {
     try {
-      return routeService.createProjectRoutes(projectName, projectType as any);
+      return routeService.createProjectRoutes(projectName, cardId);
     } catch (error) {
       console.error('Error in createProjectRoutes:', error);
-      throw error;
-    }
-  });
-  
-  // 获取项目类型
-  ipcMain.handle('api:routes:getProjectType', (_, path: string) => {
-    try {
-      return routeService.getProjectTypeFromPath(path);
-    } catch (error) {
-      console.error('Error in getProjectType:', error);
       throw error;
     }
   });

@@ -14,5 +14,5 @@ export type { Route } from './entities/route';
 export type { CreateUserRequest, UpdateUserRequest } from './requests/userRequest';
 export type { CreateArticleRequest, UpdateArticleRequest } from './requests/articleRequest';
 export type { CreateCategoryRequest, UpdateCategoryRequest } from './requests/categoryRequest';
-export type { CreateCardRequest, UpdateCardRequest } from './requests/cardRequest';
+export type { CreateCardRequest, UpdateCardRequest, MenuItem } from './requests/cardRequest';
 export type { CreateRouteRequest, UpdateRouteRequest } from './requests/routeRequest';

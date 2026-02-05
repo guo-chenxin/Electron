@@ -36,9 +36,10 @@ export const staticRoutes: RouteRecordRaw[] = [
 ]
 
 /**
- * 简化的静态路由（用于 index.ts 中）
+ * 基础静态路由
+ * 用于初始化路由实例
  */
-export const simplifiedStaticRoutes: RouteRecordRaw[] = [
+export const baseStaticRoutes: RouteRecordRaw[] = [
   {
     path: '/login',
     component: () => import('../views/Login.vue'),
@@ -63,10 +64,40 @@ export interface AppRouteRecordRaw {
     keepAlive?: boolean
     showInMenu?: boolean
     showInTabs?: boolean
-    alwaysShow?: boolean
     order?: number
   }
   children?: AppRouteRecordRaw[]
+}
+
+/**
+ * 验证路由路径格式
+ * @param path 路由路径
+ * @returns 是否有效
+ */
+export function validateRoutePath(path: string): boolean {
+  // 路由必须以/开头
+  if (!path.startsWith('/')) {
+    return false
+  }
+  
+  // 避免重复斜杠
+  if (path.includes('//')) {
+    return false
+  }
+  
+  return true
+}
+
+/**
+ * 生成组件名称（PascalCase）
+ * @param name 原始名称
+ * @returns PascalCase格式的组件名称
+ */
+export function generateComponentName(name: string): string {
+  return name
+    .split('-')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join('')
 }
 
 /**
@@ -76,7 +107,7 @@ export interface AppRouteRecordRaw {
 export function loadRouteComponent(path: string): () => Promise<any> {
   // 根路径使用主窗口模板
   if (path === '/') {
-    return () => import('../components/main-window-template/MainWindowLayout.vue')
+    return () => import('../components/template/main-window/MainWindowLayout.vue')
   }
   
   // 其他路径根据规则生成组件路径
@@ -84,47 +115,21 @@ export function loadRouteComponent(path: string): () => Promise<any> {
   
   // 主窗口相关路由
   if (pathParts[0] === 'main') {
-    const componentName = pathParts[1]
-      .split('-')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join('')
+    const componentName = generateComponentName(pathParts[1] || '')
     return () => import(`../views/main-window/${componentName}.vue`)
   }
   
   // 项目根路由
   if (pathParts.length === 1) {
-    const projectName = pathParts[0]
-    // 这里可以根据后端提供的项目类型或路由配置来决定使用哪种布局
-    // 暂时根据项目名称判断，后续可以通过API获取更准确的信息
-    // 检查是否为其他项目（无菜单）
-    const isOtherProject = false; // 默认为常规项目
-    
-    try {
-      if (isOtherProject) {
-        return () => import('../components/other-project-template/OtherProjectLayout.vue')
-      } else {
-        return () => import('../components/regular-project-template/RegularLayout.vue')
-      }
-    } catch (error) {
-      console.error(`Failed to load project layout:`, error)
-      return () => import('../views/NotFound.vue')
-    }
+    // 所有项目都使用通用模板
+    return () => import('../components/template/general/RegularLayout.vue')
   }
   
   // 项目子路由
   if (pathParts.length >= 2) {
     const projectName = pathParts[0]
-    const componentName = pathParts[1]
-      .split('-')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join('')
-    
-    try {
-      return () => import(`../views/project/${projectName}/${componentName}.vue`)
-    } catch (error) {
-      console.error(`Failed to load project component:`, error)
-      return () => import('../views/NotFound.vue')
-    }
+    const componentName = generateComponentName(pathParts[1])
+    return () => import(`../views/${projectName}/${componentName}.vue`)
   }
   
   // 默认返回404组件
@@ -148,7 +153,6 @@ export function convertDbRoutesToVueRoutes(dbRoutes: any[]): RouteRecordRaw[] {
         keepAlive: dbRoute.keepAlive === true,
         showInMenu: dbRoute.showInMenu !== false,
         showInTabs: dbRoute.showInTabs !== false,
-        alwaysShow: dbRoute.alwaysShow === true,
         order: dbRoute.order || 0
       }
     }
@@ -159,98 +163,25 @@ export function convertDbRoutesToVueRoutes(dbRoutes: any[]): RouteRecordRaw[] {
     // 根据路由路径动态生成组件导入路径
     // 1. 根路径使用主窗口模板
     if (dbRoute.path === '/') {
-      routeConfig.component = () => import('../components/main-window-template/MainWindowLayout.vue')
-      console.log('Layout component used for:', dbRoute.path, '../components/main-window-template/MainWindowLayout.vue')
-      
-      // 设置默认重定向，确保右侧有内容显示
-      if (!dbRoute.redirect) {
-        routeConfig.redirect = '/main/all-projects'
-        console.log('Default redirect set for root route:', '/main/all-projects')
-      }
+      routeConfig.component = loadRouteComponent(dbRoute.path)
+      console.log('Layout component used for:', dbRoute.path, '../components/template/main-window/MainWindowLayout.vue')
     } 
-    // 2. 常规项目根路由（有菜单项）
-    else if (dbRoute.projectType === 'regular' && !dbRoute.parentId) {
-      // 所有常规项目根路由都使用常规项目模板
-      routeConfig.component = () => import('../components/regular-project-template/RegularLayout.vue')
-      console.log('Layout component used for regular project:', dbRoute.path, '../components/regular-project-template/RegularLayout.vue')
-      
-      // 设置默认重定向，确保右侧有内容显示
-      if (!dbRoute.redirect) {
-        const defaultRedirect = `${dbRoute.path}/home`
-        routeConfig.redirect = defaultRedirect
-        console.log('Default redirect set for regular project:', dbRoute.path, '->', defaultRedirect)
-      }
+    // 2. 项目根路由
+    else if (!dbRoute.parentId) {
+      // 所有项目根路由都使用通用项目模板
+      routeConfig.component = loadRouteComponent(dbRoute.path)
+      console.log('Layout component used for project:', dbRoute.path, '../components/template/general/RegularLayout.vue')
     } 
-    // 3. 其他项目根路由（无菜单项）
-    else if (dbRoute.projectType === 'other' && !dbRoute.parentId) {
-      // 所有其他项目根路由都使用其他项目模板
-      routeConfig.component = () => import('../components/other-project-template/OtherProjectLayout.vue')
-      console.log('Layout component used for other project:', dbRoute.path, '../components/other-project-template/OtherProjectLayout.vue')
-      
-      // 设置默认重定向，确保右侧有内容显示
-      if (!dbRoute.redirect) {
-        const defaultRedirect = `${dbRoute.path}/home`
-        routeConfig.redirect = defaultRedirect
-        console.log('Default redirect set for other project:', dbRoute.path, '->', defaultRedirect)
-      }
-    } 
-    // 4. 子路由或其他路由，根据路径生成对应的组件导入
+    // 3. 子路由或其他路由，根据路径生成对应的组件导入
     else {
       // 跳过布局组件的配置，只处理内容组件
       if (!dbRoute.redirect) {
-        // 根据路由路径生成组件文件路径
-        let importPath = ''
-        
-        // 1. 主窗口相关路由 (/main/xxx)
-        if (dbRoute.path.startsWith('/main/')) {
-          // 提取路由名称，如 /main/all-projects -> all-projects
-          const routeName = dbRoute.path.slice(6) // 移除 /main/
-          // 转换为 PascalCase，如 all-projects -> AllProjects
-          const componentName = routeName.replace(/(^|-)(\w)/g, (match: string, separator: string, letter: string) => letter.toUpperCase())
-          importPath = `../views/main-window/${componentName}.vue`
-        }
-        // 2. 常规项目子路由 (/projectName/xxx)
-        else if (dbRoute.projectType === 'regular' && dbRoute.parentId) {
-          // 提取项目名称和路由名称，如 /blog/home -> blog, home
-          const pathParts = dbRoute.path.split('/').filter(Boolean)
-          if (pathParts.length >= 2) {
-            const projectName = pathParts[0]
-            const routeName = pathParts[1]
-            // 组件在 project/{projectName}/ 目录下
-            importPath = `../views/project/${projectName}/${routeName.charAt(0).toUpperCase() + routeName.slice(1)}.vue`
-          } else {
-            // 路径格式不正确，使用默认组件
-            importPath = '../views/DefaultView.vue'
-          }
-        }
-        // 3. 其他项目子路由 (/projectName/xxx)
-        else if (dbRoute.projectType === 'other' && dbRoute.parentId) {
-          // 提取项目名称和路由名称，如 /music/home -> music, home
-          const pathParts = dbRoute.path.split('/').filter(Boolean)
-          if (pathParts.length >= 2) {
-            const projectName = pathParts[0]
-            const routeName = pathParts[1]
-            // 组件在 other/{projectName}/ 目录下
-            importPath = `../views/other/${projectName}/${routeName.charAt(0).toUpperCase() + routeName.slice(1)}.vue`
-          } else {
-            // 路径格式不正确，使用默认组件
-            importPath = '../views/DefaultView.vue'
-          }
-        }
-        // 4. 其他路由
-        else {
-          // 提供一个默认组件，避免路由错误
-          importPath = '../views/DefaultView.vue'
-        }
-        
-        console.log('Content component used for:', dbRoute.path, importPath)
-        
         try {
-          routeConfig.component = () => import(importPath)
+          routeConfig.component = loadRouteComponent(dbRoute.path)
         } catch (error) {
-          console.error('Error importing component:', importPath, error)
+          console.error('Error loading component for route:', dbRoute.path, error)
           // 提供一个默认组件，避免路由错误
-          routeConfig.component = () => import('../views/DefaultView.vue')
+          routeConfig.component = () => import('../views/NotFound.vue')
         }
       }
     }

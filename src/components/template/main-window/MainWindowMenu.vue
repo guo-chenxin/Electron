@@ -152,6 +152,13 @@ export default {
     const fetchRoutes = async () => {
       try {
         console.log('Fetching routes from database...')
+        
+        // 检查window.electronAPI是否存在
+        if (!window.electronAPI) {
+          console.warn('window.electronAPI is not available, using default menu items');
+          return;
+        }
+        
         // 从主进程获取路由配置
         const routesFromDb = await window.electronAPI.invoke<any[]>('api:routes:getAllNested')
         

@@ -7,7 +7,8 @@
         <span class="app-text">Electron</span>
       </div>
     </div>
-    <div class="center">
+    <!-- 只在非登录页面显示标签页 -->
+    <div class="center" v-if="!isLoginPage">
       <div class="tabs">
         <!-- 动态生成标签页 -->
         <div 
@@ -33,6 +34,10 @@
           >×</button>
         </div>
       </div>
+    </div>
+    <!-- 登录页面时，center部分为空 -->
+    <div class="center" v-else>
+      <div class="empty-center"></div>
     </div>
     <div class="right">
           <!-- 窗口控制按钮，使用flex-grow确保始终靠右 -->
@@ -111,6 +116,9 @@ const router = useRouter();
 const route = useRoute();
 const { logout, isLoggedIn, currentUser } = useAuth();
 const { openTabs, lastVisitedPaths, tabRoutes, closeTab, resetTabs } = useTabs();
+
+// 判断是否是登录页面
+const isLoginPage = computed(() => route.path === '/login');
 
 // 窗口置顶状态
 const isPinned = ref(false);
@@ -264,18 +272,33 @@ const closeWindow = () => {
   margin-right: 8px;
 }
 
-/* 图标组样式 */
+/* 图标组样式 - 一行显示多个按钮 */
 .icons-group {
   display: flex;
   align-items: center;
-  gap: 1px;
+  gap: 4px;
+  flex-wrap: wrap;
 }
 
-/* 窗口控制按钮组样式 */
+/* 窗口控制按钮组样式 - 一行显示多个按钮 */
 .window-controls-group {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+/* 按钮组通用样式 */
+.btn-group {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.btn-group .btn {
+  flex: 1;
+  min-width: 36px;
 }
 
 .tabs {

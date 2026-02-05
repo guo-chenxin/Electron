@@ -88,6 +88,15 @@ export class AppDatabase {
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );
       
+      -- 分类表
+      CREATE TABLE IF NOT EXISTS categories (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT UNIQUE NOT NULL,
+        description TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+      
       -- 文章表
       CREATE TABLE IF NOT EXISTS articles (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -103,15 +112,6 @@ export class AppDatabase {
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (author_id) REFERENCES users (id) ON DELETE CASCADE,
         FOREIGN KEY (category_id) REFERENCES categories (id) ON DELETE SET NULL
-      );
-      
-      -- 分类表
-      CREATE TABLE IF NOT EXISTS categories (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT UNIQUE NOT NULL,
-        description TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );
       
       -- 标签表
@@ -130,6 +130,28 @@ export class AppDatabase {
         FOREIGN KEY (tag_id) REFERENCES tags (id) ON DELETE CASCADE
       );
       
+      -- 路由表
+      CREATE TABLE IF NOT EXISTS routes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        path TEXT NOT NULL UNIQUE,           -- 路由路径
+        name TEXT UNIQUE,                    -- 路由名称
+        component TEXT,                      -- 组件路径
+        redirect TEXT,                       -- 重定向路径
+        parent_id INTEGER,                   -- 父路由ID，用于嵌套路由
+        project_id TEXT,                     -- 项目标识，用于多项目管理
+        title TEXT,                          -- 路由标题
+        icon TEXT,                           -- 路由图标
+        requires_auth INTEGER DEFAULT 1,      -- 是否需要认证（1:是，0:否）
+        permission TEXT,                     -- 权限标识
+        keep_alive INTEGER DEFAULT 0,         -- 是否缓存组件（1:是，0:否）
+        show_in_menu INTEGER DEFAULT 1,        -- 是否显示在菜单中（1:是，0:否）
+        show_in_tabs INTEGER DEFAULT 1,        -- 是否显示在标签页中（1:是，0:否）
+        "order" INTEGER DEFAULT 0,              -- 菜单显示顺序（使用双引号转义SQL关键字）
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (parent_id) REFERENCES routes (id) ON DELETE CASCADE
+      );
+      
       -- 卡片表
       CREATE TABLE IF NOT EXISTS cards (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -137,7 +159,6 @@ export class AppDatabase {
         description TEXT,
         icon TEXT,
         is_favorite INTEGER DEFAULT 0,
-        type TEXT DEFAULT 'project',
         route_id INTEGER,                   -- 关联到路由表的ID
         route_path TEXT,                    -- 路由路径（冗余字段，便于快速查询）
         last_clicked_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -166,82 +187,26 @@ export class AppDatabase {
       -- 文章标签关联表索引
       CREATE INDEX IF NOT EXISTS idx_article_tags_tag_id ON article_tags(tag_id);
       
+      -- 路由表索引
+      CREATE INDEX IF NOT EXISTS idx_routes_parent_id ON routes(parent_id);
+      CREATE INDEX IF NOT EXISTS idx_routes_path ON routes(path);
+      CREATE INDEX IF NOT EXISTS idx_routes_project_id ON routes(project_id);
+      CREATE INDEX IF NOT EXISTS idx_routes_order ON routes("order");
+      
       -- 卡片表索引
       CREATE INDEX IF NOT EXISTS idx_cards_is_favorite ON cards(is_favorite);
       CREATE INDEX IF NOT EXISTS idx_cards_last_clicked_at ON cards(last_clicked_at);
       CREATE INDEX IF NOT EXISTS idx_cards_route_id ON cards(route_id);
       CREATE INDEX IF NOT EXISTS idx_cards_route_path ON cards(route_path);
-      
-      -- 路由表
-      CREATE TABLE IF NOT EXISTS routes (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        path TEXT NOT NULL UNIQUE,           -- 路由路径
-        name TEXT UNIQUE,                    -- 路由名称
-        component TEXT,                      -- 组件路径
-        redirect TEXT,                       -- 重定向路径
-        parent_id INTEGER,                   -- 父路由ID，用于嵌套路由
-        project_id TEXT,                     -- 项目标识，用于多项目管理
-        project_type TEXT DEFAULT 'regular',  -- 项目类型（regular: 常规项目，other: 其他项目）
-        title TEXT,                          -- 路由标题
-        icon TEXT,                           -- 路由图标
-        requires_auth INTEGER DEFAULT 1,      -- 是否需要认证（1:是，0:否）
-        permission TEXT,                     -- 权限标识
-        keep_alive INTEGER DEFAULT 0,         -- 是否缓存组件（1:是，0:否）
-        show_in_menu INTEGER DEFAULT 1,        -- 是否显示在菜单中（1:是，0:否）
-        show_in_tabs INTEGER DEFAULT 1,        -- 是否显示在标签页中（1:是，0:否）
-        always_show INTEGER DEFAULT 0,         -- 即使只有一个子路由，也始终显示父菜单（1:是，0:否）
-        "order" INTEGER DEFAULT 0,              -- 菜单显示顺序（使用双引号转义SQL关键字）
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (parent_id) REFERENCES routes (id) ON DELETE CASCADE
-      );
-      
-      -- 路由表索引
-      CREATE INDEX IF NOT EXISTS idx_routes_parent_id ON routes(parent_id);
-      CREATE INDEX IF NOT EXISTS idx_routes_path ON routes(path);
-      CREATE INDEX IF NOT EXISTS idx_routes_project_id ON routes(project_id);
-      CREATE INDEX IF NOT EXISTS idx_routes_project_type ON routes(project_type);
-      CREATE INDEX IF NOT EXISTS idx_routes_order ON routes("order");
     `;
       
-      // 表结构更新SQL语句
-      // 注意：SQLite不支持ALTER TABLE语句中的IF NOT EXISTS子句
-      // 我们需要为每个ALTER TABLE语句单独执行，并捕获可能的错误
-      // 这样可以确保现有数据不会丢失
-      const updateTablesSQLs = [
-        // 更新用户表：添加缺少的字段
-        `ALTER TABLE users ADD COLUMN avatar_url TEXT;`,
-        `ALTER TABLE users ADD COLUMN bio TEXT;`,
-        `ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user';`,
-        
-        // 更新文章表：添加缺少的字段
-        `ALTER TABLE articles ADD COLUMN summary TEXT;`,
-        `ALTER TABLE articles ADD COLUMN tags TEXT;`,
-        `ALTER TABLE articles ADD COLUMN status TEXT DEFAULT 'draft';`,
-        `ALTER TABLE articles ADD COLUMN view_count INTEGER DEFAULT 0;`,
-        
-        // 更新分类表：添加缺少的字段
-        `ALTER TABLE categories ADD COLUMN description TEXT;`
-      ];
-
       try {
         // 执行创建表语句
         // 使用CREATE TABLE IF NOT EXISTS，确保表不存在时才创建
         this.db.exec(createTablesSQL);
         
-        // 逐个执行表结构更新语句
-        // 为现有表添加缺少的字段，不会丢失现有数据
-        for (const sql of updateTablesSQLs) {
-          try {
-            this.db.exec(sql);
-          } catch (updateErr: any) {
-            // 记录错误，但继续执行其他SQL语句
-            console.error(`Failed to execute SQL: ${sql}`);
-            console.error('Error message:', updateErr.message);
-          }
-        }
-        
-        console.log('Database tables initialized and updated successfully');
+        console.log('Database tables initialized successfully');
+
       } catch (err: any) {
         console.error('Failed to initialize database tables:', err.message);
       } finally {

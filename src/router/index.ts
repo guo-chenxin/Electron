@@ -1,5 +1,5 @@
 import { createRouter, createWebHashHistory, RouteRecordRaw } from 'vue-router'
-import { simplifiedStaticRoutes, convertDbRoutesToVueRoutes } from './routes'
+import { baseStaticRoutes, convertDbRoutesToVueRoutes } from './routes'
 
 // 添加electron的类型声明
 declare global {
@@ -13,7 +13,7 @@ declare global {
 // 创建路由实例
 const router = createRouter({
   history: createWebHashHistory(),
-  routes: simplifiedStaticRoutes
+  routes: baseStaticRoutes
 })
 
 // 路由加载状态
@@ -23,12 +23,19 @@ let isRoutesLoaded = false
 export async function loadDynamicRoutes() {
   try {
     // 清除现有的动态路由（保留静态路由）
-    const staticRouteNames = simplifiedStaticRoutes.map(route => route.name)
+    const staticRouteNames = baseStaticRoutes.map(route => route.name)
     router.getRoutes().forEach(route => {
       if (route.name && !staticRouteNames.includes(route.name)) {
         router.removeRoute(route.name)
       }
     })
+    
+    // 检查window.electronAPI是否存在
+    if (!window.electronAPI) {
+      console.warn('window.electronAPI is not available, using static routes only');
+      isRoutesLoaded = true;
+      return;
+    }
     
     // 从主进程获取路由配置
     const routesFromDb = await window.electronAPI.invoke<any[]>('api:routes:getAllNested')
