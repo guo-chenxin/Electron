@@ -17,13 +17,43 @@ export class VerificationCodeService {
   private readonly CODE_EXPIRY_TIME = 5 * 60 * 1000; // 5分钟
   private readonly CODE_LENGTH = 6;
   private readonly SEND_COOLDOWN = 60 * 1000; // 60秒冷却时间
+  private cleanupController: AbortController;
 
   private constructor() {
+    // 初始化清理控制器
+    this.cleanupController = new AbortController();
     // 定期清理过期的验证码和发送记录
-    setInterval(() => {
+    this.startCleanupTimer();
+  }
+
+  // 启动清理定时器
+  private startCleanupTimer() {
+    const { signal } = this.cleanupController;
+    
+    const cleanup = () => {
+      if (signal.aborted) return;
+      
       this.cleanupExpiredCodes();
       this.cleanupExpiredSendRecords();
-    }, 60 * 1000); // 每分钟清理一次
+      
+      // 设置下一次清理
+      setTimeout(cleanup, 60 * 1000);
+    };
+    
+    // 启动第一次清理
+    setTimeout(cleanup, 60 * 1000);
+  }
+
+  // 停止清理定时器
+  public stopCleanupTimer() {
+    this.cleanupController.abort();
+  }
+
+  // 重启清理定时器
+  public restartCleanupTimer() {
+    this.stopCleanupTimer();
+    this.cleanupController = new AbortController();
+    this.startCleanupTimer();
   }
 
   public static getInstance(): VerificationCodeService {

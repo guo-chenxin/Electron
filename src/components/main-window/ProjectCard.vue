@@ -4,9 +4,6 @@
     shadow="hover"
     @click="handleClick"
   >
-    <!-- 收藏指示器 -->
-    <div v-if="isFavorite" class="favorite-indicator"></div>
-    
     <div class="card-content">
       <span class="card-icon" :class="icon || 'i-carbon-folder'"></span>
       <h2 class="card-title">{{ title }}</h2>
@@ -23,7 +20,6 @@ const props = defineProps<{
   title: string
   description: string
   icon?: string
-  isFavorite?: boolean
 }>()
 
 // 定义事件
@@ -47,34 +43,7 @@ const handleClick = () => {
   position: relative;
 }
 
-/* 收藏指示器 */
-.favorite-indicator {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  width: 10px;
-  height: 10px;
-  background-color: #fadb14;
-  border-radius: 50%;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  animation: pulse 2s infinite;
-}
 
-/* 收藏指示器动画 */
-@keyframes pulse {
-  0% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  50% {
-    transform: scale(1.1);
-    opacity: 0.8;
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
 
 .project-card:hover {
   transform: translateY(-5px);

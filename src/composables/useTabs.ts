@@ -2,15 +2,6 @@ import { ref, computed, watch, Ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { TabItem, TabConfigItem } from '../types/tabs';
 
-// 扩展Window接口，添加electronAPI类型定义
-declare global {
-  interface Window {
-    electronAPI: {
-      invoke: <T = any>(channel: string, ...args: any[]) => Promise<T>;
-    };
-  }
-}
-
 // 常量定义
 const STORAGE_KEYS = {
   OPEN_TABS: 'openTabs',
@@ -61,7 +52,6 @@ export const fetchRoutesForTabs = async () => {
   try {
     // 检查window.electronAPI是否存在
     if (!window.electronAPI) {
-      console.warn('window.electronAPI is not available, using default tab config');
       return;
     }
     
@@ -75,7 +65,7 @@ export const fetchRoutesForTabs = async () => {
     // 从主进程获取路由配置
     const routesFromDb = await window.electronAPI.invoke<any[]>('api:routes:getAllNested');
     
-    console.log('Routes from database for tabs:', routesFromDb);
+
     
     // 处理路由数据，更新标签页配置
     const config: Record<string, TabConfigItem> = { ...DEFAULT_TAB_CONFIG };
@@ -89,7 +79,6 @@ export const fetchRoutesForTabs = async () => {
             title: route.title,
             icon: route.icon || 'i-carbon-home'
           };
-          console.log('Added route to tab config:', route.path, route.title, route.icon);
         }
         
         // 处理子路由
@@ -103,9 +92,8 @@ export const fetchRoutesForTabs = async () => {
     
     // 更新标签页配置
     tabConfig.value = config;
-    console.log('Tab config updated:', config);
   } catch (error) {
-    console.error('Failed to fetch routes for tabs:', error);
+    // 静默处理错误
   }
 };
 

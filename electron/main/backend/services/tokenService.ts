@@ -9,7 +9,7 @@ export class TokenService {
   private readonly TOKEN_SERVICE_NAME = 'ElectronApp';
   private readonly REFRESH_TOKEN_KEY_PREFIX = 'refresh_token_';
   private readonly REFRESH_INTERVAL = 4 * 60 * 1000; // 4分钟
-  private refreshTimer: NodeJS.Timeout | null = null;
+  private refreshController: AbortController;
   
   // JWT配置
   private readonly JWT_SECRET = 'your-secret-key-change-in-production'; // 生产环境中应使用环境变量
@@ -17,6 +17,8 @@ export class TokenService {
   private readonly REFRESH_TOKEN_EXPIRES_IN = '7d'; // 刷新令牌有效期7天
 
   private constructor() {
+    // 初始化刷新控制器
+    this.refreshController = new AbortController();
     // 启动定时刷新
     this.startRefreshTimer();
   }
@@ -73,23 +75,41 @@ export class TokenService {
   // 清除所有令牌
   public clearTokens(): void {
     this.accessToken = null;
-    if (this.refreshTimer) {
-      clearInterval(this.refreshTimer);
-      this.refreshTimer = null;
-    }
+    this.stopRefreshTimer();
+  }
+
+  // 停止刷新定时器
+  public stopRefreshTimer() {
+    this.refreshController.abort();
   }
 
   // 启动定时刷新
   private startRefreshTimer(): void {
-    if (this.refreshTimer) {
-      clearInterval(this.refreshTimer);
-    }
-
-    this.refreshTimer = setInterval(async () => {
+    // 停止现有的定时器
+    this.stopRefreshTimer();
+    
+    // 创建新的控制器
+    this.refreshController = new AbortController();
+    const { signal } = this.refreshController;
+    
+    const refresh = async () => {
+      if (signal.aborted) return;
+      
       // 这里应该实现实际的令牌刷新逻辑
       // 由于需要userId，实际刷新应该在有用户登录后进行
       console.log('[令牌服务] 检查令牌刷新');
-    }, this.REFRESH_INTERVAL);
+      
+      // 设置下一次刷新
+      setTimeout(refresh, this.REFRESH_INTERVAL);
+    };
+    
+    // 启动第一次刷新
+    setTimeout(refresh, this.REFRESH_INTERVAL);
+  }
+
+  // 重启刷新定时器
+  public restartRefreshTimer() {
+    this.startRefreshTimer();
   }
 
   // 生成JWT访问令牌

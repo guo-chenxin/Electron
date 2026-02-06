@@ -1,4 +1,5 @@
-import fs from 'node:fs'
+import fs from 'node:fs/promises'
+import path from 'node:path'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import electron from 'vite-plugin-electron/simple'
@@ -6,8 +7,8 @@ import UnoCSS from 'unocss/vite'
 import pkg from './package.json'
 
 // https://vitejs.dev/config/
-export default defineConfig(({ command }) => {
-  fs.rmSync('dist-electron', { recursive: true, force: true })
+export default defineConfig(async ({ command }) => {
+  await fs.rm('dist-electron', { recursive: true, force: true })
 
   const isServe = command === 'serve'
   const isBuild = command === 'build'
@@ -42,10 +43,34 @@ export default defineConfig(({ command }) => {
                 // Some third-party Node.js libraries may not be built correctly by Vite, especially `C/C++` addons,
                 // we can use `external` to exclude them to ensure they work correctly.
                 // Others need to put them in `dependencies` to ensure they are collected into `app.asar` after the app is built.
-                // Of course, this is not absolute, just this way is relatively simple. :)
+                // Of course, this is not absolute, just this way is relatively simple. :)  
                 external: Object.keys(pkg.dependencies || {}),
               },
             },
+            // 使用vite的构建钩子来复制SQL文件
+            plugins: [
+              {
+                name: 'copy-sql-files',
+                async writeBundle() {
+                  const sqlSrcDir = path.join(__dirname, 'electron', 'main', 'backend', 'db', 'sql')
+                  const sqlDestDir = path.join(__dirname, 'dist-electron', 'main')
+                  
+                  // 确保目标目录存在
+                  await fs.mkdir(sqlDestDir, { recursive: true })
+                  
+                  // 复制SQL文件
+                  const sqlFiles = await fs.readdir(sqlSrcDir)
+                  for (const file of sqlFiles) {
+                    if (file.endsWith('.sql')) {
+                      const srcPath = path.join(sqlSrcDir, file)
+                      const destPath = path.join(sqlDestDir, file)
+                      await fs.copyFile(srcPath, destPath)
+                      console.log(`Copied SQL file: ${file} to ${sqlDestDir}`)
+                    }
+                  }
+                }
+              }
+            ]
           },
         },
         preload: {
@@ -70,7 +95,21 @@ export default defineConfig(({ command }) => {
       }),
     ],
     optimizeDeps: {
-      include: ['@iconify-json/carbon']
+      include: ['@iconify-json/carbon'],
+      esbuildOptions: {
+        target: 'es2022'
+      }
+    },
+    build: {
+      target: 'es2022',
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'vendor': ['vue', 'vue-router', 'element-plus'],
+            'icons': ['@iconify-json/carbon']
+          }
+        }
+      }
     },
     server: process.env.VSCODE_DEBUG && (() => {
       const url = new URL(pkg.debug.env.VITE_DEV_SERVER_URL)

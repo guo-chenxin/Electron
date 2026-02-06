@@ -54,7 +54,7 @@ export function registerAuthRoutes(): void {
       
       // 检查用户是否存在
       console.log('检查用户是否存在...');
-      let user = await userService.getUserByEmail(normalizedEmail);
+      let user = userService.getUserByEmail(normalizedEmail);
       console.log('用户存在结果:', !!user);
       
       if (!user) {
@@ -64,7 +64,7 @@ export function registerAuthRoutes(): void {
         console.log('生成的用户名:', username);
         
         // 创建用户
-        user = await userService.create({
+        user = userService.create({
           username, 
           email: normalizedEmail,
           password: '' // 验证码登录不需要密码
@@ -127,7 +127,7 @@ export function registerAuthRoutes(): void {
       const normalizedEmail = email.toLowerCase();
       
       // 检查用户是否存在
-      const user = await userService.getUserByEmail(normalizedEmail);
+      const user = userService.getUserByEmail(normalizedEmail);
       
       if (!user) {
         throw new Error('用户不存在');

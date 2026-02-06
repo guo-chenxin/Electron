@@ -21,7 +21,7 @@ export class CardService extends BaseService<Card, CreateCardRequest, UpdateCard
       title: row.title,
       description: row.description,
       icon: row.icon,
-      isFavorite: row.is_favorite === 1,
+
       routeId: row.route_id,
       routePath: row.route_path,
       lastClickedAt: convertUtcToLocal(row.last_clicked_at),
@@ -80,8 +80,8 @@ export class CardService extends BaseService<Card, CreateCardRequest, UpdateCard
    */
   private saveCardRecord(data: any): Card | null {
     const sql = `
-      INSERT INTO ${this.tableName} (title, description, icon, is_favorite, route_id, route_path)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO ${this.tableName} (title, description, icon, route_id, route_path)
+      VALUES (?, ?, ?, ?, ?)
     `;
     
     // 准备参数，处理可选字段
@@ -89,7 +89,6 @@ export class CardService extends BaseService<Card, CreateCardRequest, UpdateCard
       data.title, // 必填字段，不能为空
       data.description || null, // 可选字段，为空时使用null
       data.icon || null, // 可选字段，为空时使用null
-      0, // 默认不是收藏状态
       null, // route_id，稍后设置
       data.routePath || null // 可选字段，为空时使用null
     ];
@@ -113,7 +112,6 @@ export class CardService extends BaseService<Card, CreateCardRequest, UpdateCard
         title = COALESCE(?, title),
         description = COALESCE(?, description),
         icon = COALESCE(?, icon),
-        is_favorite = COALESCE(?, is_favorite),
         route_id = COALESCE(?, route_id),
         route_path = COALESCE(?, route_path),
         updated_at = ?
@@ -125,7 +123,7 @@ export class CardService extends BaseService<Card, CreateCardRequest, UpdateCard
         data.title,
         data.description,
         data.icon,
-        data.isFavorite === undefined ? null : (data.isFavorite ? 1 : 0),
+
         (data as UpdateCardRequest).routeId,
         data.routePath,
         getCurrentLocalTimeForSqlite(),
@@ -448,53 +446,9 @@ export class CardService extends BaseService<Card, CreateCardRequest, UpdateCard
     return rows.map(row => this.mapFields(row));
   }
 
-  /**
-   * 获取收藏的卡片
-   */
-  getFavoriteCards(limit: number = 100, offset: number = 0): Card[] {
-    const sql = `
-      SELECT * 
-      FROM ${this.tableName}
-      WHERE is_favorite = 1
-      ORDER BY updated_at DESC
-      LIMIT ? OFFSET ?
-    `;
-    
-    const rows = db.all<any>(sql, [limit, offset]);
-    return rows.map(row => this.mapFields(row));
-  }
 
-  /**
-   * 获取最近访问的卡片
-   */
-  getRecentCards(limit: number = 100, offset: number = 0): Card[] {
-    const sql = `
-      SELECT * 
-      FROM ${this.tableName}
-      ORDER BY last_clicked_at DESC
-      LIMIT ? OFFSET ?
-    `;
-    
-    const rows = db.all<any>(sql, [limit, offset]);
-    return rows.map(row => this.mapFields(row));
-  }
 
-  /**
-   * 点击卡片，更新最后访问时间
-   */
-  clickCard(id: number): Card | null {
-    // 使用本地时间而不是UTC时间
-    const localTime = getCurrentLocalTimeForSqlite();
-    
-    const sql = `
-      UPDATE ${this.tableName}
-      SET last_clicked_at = ?
-      WHERE ${this.idField} = ?
-    `;
-    
-    db.run(sql, [localTime, id]);
-    return this.getById(id);
-  }
+
 
   /**
    * 创建卡片

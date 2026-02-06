@@ -25,25 +25,7 @@ export function registerCardRoutes(): void {
     }
   });
 
-  // 获取收藏的卡片
-  ipcMain.handle('api:cards:getFavorites', (_, limit = 100, offset = 0) => {
-    try {
-      return cardService.getFavoriteCards(limit, offset);
-    } catch (error) {
-      console.error('Error in getFavorites cards:', error);
-      throw error;
-    }
-  });
 
-  // 获取最近访问的卡片
-  ipcMain.handle('api:cards:getRecent', (_, limit = 100, offset = 0) => {
-    try {
-      return cardService.getRecentCards(limit, offset);
-    } catch (error) {
-      console.error('Error in getRecent cards:', error);
-      throw error;
-    }
-  });
 
   // 创建卡片
   ipcMain.handle('api:cards:create', (_, cardData: any) => {
@@ -75,29 +57,5 @@ export function registerCardRoutes(): void {
     }
   });
 
-  // 点击卡片，更新最后访问时间
-  ipcMain.handle('api:cards:click', (_, id: number) => {
-    try {
-      return cardService.clickCard(id);
-    } catch (error) {
-      console.error('Error in click card:', error);
-      throw error;
-    }
-  });
 
-  // 切换卡片收藏状态
-  ipcMain.handle('api:cards:toggleFavorite', (_, id: number) => {
-    try {
-      const card = cardService.getById(id);
-      if (!card) {
-        throw new Error('Card not found');
-      }
-      return cardService.update(id, {
-        isFavorite: !card.isFavorite
-      });
-    } catch (error) {
-      console.error('Error in toggleFavorite card:', error);
-      throw error;
-    }
-  });
 }

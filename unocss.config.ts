@@ -20,12 +20,13 @@ export default defineConfig({
         'vertical-align': 'middle'
       },
       // 配置图标源，使用iconify的Carbon图标
-      provider: 'iconify',
+      // provider: 'iconify',
       // 确保所有Carbon图标都能被正确解析
       collections: {
-        carbon: {
-          package: '@iconify-json/carbon'
-        }
+        // carbon: {
+        //   package: '@iconify-json/carbon'
+        // }
+        carbon: () => import('@iconify-json/carbon/icons.json').then(i => i.default),
       }
     })
   ],

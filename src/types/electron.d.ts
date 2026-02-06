@@ -3,8 +3,9 @@ declare interface Window {
   electronAPI: {
     windowMinimize: () => void
     windowMaximize: () => void
+    windowTogglePin: () => void
     windowClose: () => void
-    invoke: (channel: string, ...args: any[]) => Promise<any>
+    invoke: <T = any>(channel: string, ...args: any[]) => Promise<T>
     send: (channel: string, ...args: any[]) => void
     on: (channel: string, listener: (event: any, ...args: any[]) => void) => void
     off: (channel: string, listener: (event: any, ...args: any[]) => void) => void

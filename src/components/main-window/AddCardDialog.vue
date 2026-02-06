@@ -194,7 +194,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, watch } from 'vue'
-import { ElMessage } from 'element-plus'
+import { messageManager } from '../../utils/messageManager'
 import RouteCard from './RouteCard.vue'
 import AddMenuItemButton from './AddMenuItemButton.vue'
 import { iconList } from '../../config/icons'
@@ -391,11 +391,9 @@ const handleSubmit = async () => {
     setTimeout(() => {
       resetForm()
     }, 300)
-    
-    ElMessage.success('项目添加成功')
   } catch (error) {
     console.error('表单验证失败:', error)
-    ElMessage.error('表单验证失败，请检查输入')
+    messageManager.error('表单验证失败，请检查输入')
   }
 }
 

@@ -1,5 +1,4 @@
-import { app, BrowserWindow, shell, ipcMain } from 'electron'
-import { createRequire } from 'node:module'
+import { app, BrowserWindow, shell, ipcMain, screen } from 'electron'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import os from 'node:os'
@@ -8,7 +7,6 @@ import os from 'node:os'
 import { db } from './backend/db/database'
 import { apiManager } from './backend/api/apiManager'
 
-const require = createRequire(import.meta.url)
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 // The built directory structure
@@ -55,6 +53,7 @@ const indexHtml = path.join(RENDERER_DIST, 'index.html')
 
 // 创建主窗口
 async function createMainWindow() {
+  // 1. 创建窗口（隐藏状态）
   mainWindow = new BrowserWindow({
     title: 'Main window',
     icon: path.join(process.env.VITE_PUBLIC, 'logo.svg'),
@@ -77,28 +76,47 @@ async function createMainWindow() {
     },
   })
 
-  if (VITE_DEV_SERVER_URL) { // #298
-    mainWindow.loadURL(VITE_DEV_SERVER_URL)
-    // 注释掉自动打开控制台的代码
-    mainWindow.webContents.openDevTools()
-  } else {
-    mainWindow.loadFile(indexHtml)
-  }
+  // 2. 设置窗口位置到屏幕中央
+  const primaryDisplay = screen.getPrimaryDisplay()
+  const { width, height } = primaryDisplay.workAreaSize
+  mainWindow.setPosition(Math.floor((width - 1400) / 2), Math.floor((height - 900) / 2))
 
-  // 窗口加载完成后显示
+  // 3. 注册 ready-to-show 事件监听器（优先使用事件）
+  let windowShown = false
   mainWindow.on('ready-to-show', () => {
-    mainWindow?.show()
+    if (!windowShown) {
+      windowShown = true
+      mainWindow?.show()
+    }
   })
 
-  // Make all links open with the browser, not with the application
+  // 4. 添加超时机制（作为备份，确保窗口一定显示）
+  const showTimeout = setTimeout(() => {
+    if (!windowShown) {
+      windowShown = true
+      mainWindow?.show()
+    }
+  }, 5000) // 5秒超时
+
+  // 5. 加载内容
+  if (VITE_DEV_SERVER_URL) { // #298
+    await mainWindow.loadURL(VITE_DEV_SERVER_URL)
+    // 开发环境打开开发者工具
+    mainWindow.webContents.openDevTools()
+  } else {
+    await mainWindow.loadFile(indexHtml)
+  }
+
+  // 6. 清理超时计时器
+  mainWindow.on('closed', () => {
+    clearTimeout(showTimeout)
+    mainWindow = null
+  })
+
+  // 7. Make all links open with the browser, not with the application
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith('https:')) shell.openExternal(url)
     return { action: 'deny' }
-  })
-
-  // 窗口关闭时清理
-  mainWindow.on('closed', () => {
-    mainWindow = null
   })
 
   return mainWindow
@@ -230,29 +248,21 @@ app.whenReady().then(async () => {
     await db.initialize()
     
     console.log('Database initialization completed successfully')
-  } catch (error) {
-    console.error('Database initialization failed:', error)
-  }
-  
-  try {
+    
     // 初始化API路由
     apiManager.initialize()
     console.log('API routes initialization completed successfully')
-  } catch (error) {
-    console.error('API routes initialization failed:', error)
-  }
-  
-  try {
+    
     // 初始化预定义路由
     const { seedInitialRoutes } = await import('./backend/db/seedRoutes')
     await seedInitialRoutes()
     console.log('Initial routes seeded successfully')
+    
+    // 创建主窗口
+    await createMainWindow()
   } catch (error) {
-    console.error('Failed to seed initial routes:', error)
+    console.error('Backend initialization failed:', error)
   }
-  
-  // 创建主窗口
-  createMainWindow()
 })
 
 app.on('window-all-closed', () => {

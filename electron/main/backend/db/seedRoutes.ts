@@ -17,40 +17,18 @@ const baseRoutes: CreateRouteRequest[] = [
     showInTabs: true,
 
     order: 999,
-    redirect: '/main/all-projects'
+    redirect: '/main/project-management'
   },
   {
-    path: '/main/all-projects',
-    name: 'all-projects',
-    title: '所有项目',
+    path: '/main/project-management',
+    name: 'project-management',
+    title: '项目管理',
     icon: 'i-carbon-grid',
     requiresAuth: true,
     parentId: undefined,
     showInMenu: true,
     showInTabs: false,
     order: 1
-  },
-  {
-    path: '/main/favorite-projects',
-    name: 'favorite-projects',
-    title: '我的收藏',
-    icon: 'i-carbon-star',
-    requiresAuth: true,
-    parentId: undefined,
-    showInMenu: true,
-    showInTabs: false,
-    order: 2
-  },
-  {
-    path: '/main/recent-projects',
-    name: 'recent-projects',
-    title: '最近访问',
-    icon: 'i-carbon-time',
-    requiresAuth: true,
-    parentId: undefined,
-    showInMenu: true,
-    showInTabs: false,
-    order: 3
   }
 ];
 

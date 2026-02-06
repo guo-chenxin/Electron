@@ -2,24 +2,21 @@
  * 深拷贝函数，确保不会影响原始数据
  * @param obj 需要拷贝的对象
  * @returns 拷贝后的新对象
+ * @description 使用 JSON 序列化和反序列化实现深拷贝，避免 structuredClone 的限制
  */
 export const deepClone = <T>(obj: T): T => {
   if (obj === null || typeof obj !== 'object') {
     return obj
   }
-  if (obj instanceof Array) {
-    return obj.map(item => deepClone(item)) as unknown as T
+  
+  try {
+    // 尝试使用 JSON 序列化和反序列化实现深拷贝
+    return JSON.parse(JSON.stringify(obj))
+  } catch (error) {
+    console.error('Deep clone failed:', error)
+    // 如果 JSON 方法失败，返回原始对象
+    return obj
   }
-  if (typeof obj === 'object') {
-    const clonedObj: any = {}
-    for (const key in obj) {
-      if (obj.hasOwnProperty(key)) {
-        clonedObj[key] = deepClone(obj[key])
-      }
-    }
-    return clonedObj as T
-  }
-  return obj
 }
 
 /**

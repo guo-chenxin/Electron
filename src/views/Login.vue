@@ -97,7 +97,8 @@
 import { ref, reactive, onUnmounted } from 'vue';
 import { useAuth } from '@/composables/useAuth';
 // 导入ElementPlus组件
-import { ElForm, ElFormItem, ElInput, ElButton, ElMessage } from 'element-plus';
+import { ElForm, ElFormItem, ElInput, ElButton } from 'element-plus';
+import { messageManager } from '../utils/messageManager';
 
 const { loginWithCode, loginWithPassword } = useAuth();
 
@@ -118,7 +119,7 @@ const isSendingCode = ref(false);
 const isLoggingIn = ref(false);
 const countdown = ref(60);
 const isPasswordVisible = ref(false);
-let countdownTimer: number | null = null;
+let countdownController: AbortController | null = null;
 
 // 切换密码可见性
 const togglePasswordVisibility = () => {
@@ -139,7 +140,7 @@ const toggleLoginMethod = () => {
 // 发送验证码
 const sendVerificationCode = async () => {
   if (!form.email) {
-    ElMessage.error('请输入邮箱地址');
+    messageManager.error('请输入邮箱地址');
     return;
   }
   
@@ -152,9 +153,9 @@ const sendVerificationCode = async () => {
     // 发送成功，启动倒计时
     startCountdown();
     
-    ElMessage.success('验证码发送成功');
+    messageManager.success('验证码发送成功');
   } catch (err: any) {
-    ElMessage.error(err.message || '发送验证码失败，请稍后重试');
+    messageManager.error(err.message || '发送验证码失败，请稍后重试');
     isSendingCode.value = false;
   }
 };
@@ -164,36 +165,56 @@ const startCountdown = () => {
   countdown.value = 60;
   isSendingCode.value = true;
   
-  if (countdownTimer) {
-    clearInterval(countdownTimer);
-  }
+  // 停止现有的倒计时
+  stopCountdown();
   
-  countdownTimer = window.setInterval(() => {
+  // 创建新的控制器
+  countdownController = new AbortController();
+  const { signal } = countdownController;
+  
+  // 使用 setTimeout 实现可取消的倒计时
+  const tick = () => {
+    if (signal.aborted) return;
+    
     countdown.value--;
     
     if (countdown.value <= 0) {
-      clearInterval(countdownTimer!);
       isSendingCode.value = false;
+      countdownController = null;
+    } else {
+      // 设置下一次tick
+      setTimeout(tick, 1000);
     }
-  }, 1000);
+  };
+  
+  // 启动第一次tick
+  setTimeout(tick, 1000);
+};
+
+// 停止倒计时
+const stopCountdown = () => {
+  if (countdownController) {
+    countdownController.abort();
+    countdownController = null;
+  }
 };
 
 // 处理登录提交
 const handleSubmit = async () => {
   if (!form.email) {
-    ElMessage.error('请输入邮箱地址');
+    messageManager.error('请输入邮箱地址');
     return;
   }
   
   // 根据当前登录方式验证表单
   if (currentLoginMethod.value === LoginMethod.CODE) {
     if (!form.verificationCode) {
-      ElMessage.error('请输入验证码');
+      messageManager.error('请输入验证码');
       return;
     }
   } else {
     if (!form.password) {
-      ElMessage.error('请输入密码');
+      messageManager.error('请输入密码');
       return;
     }
   }
@@ -220,19 +241,19 @@ const handleSubmit = async () => {
     isLoggingIn.value = false;
     
     if (success) {
-      ElMessage.success('登录成功');
+      messageManager.success('登录成功');
     } else {
-      ElMessage.error('登录失败，请稍后重试');
+      messageManager.error('登录失败，请稍后重试');
     }
   } catch (err: any) {
     // 如果是验证码无效或已过期错误，检查用户是否已经登录
     const isLoggedIn = localStorage.getItem('userInfo') !== null;
     if (isLoggedIn && err.message === '验证码无效或已过期') {
       // 实际已经登录成功，显示成功消息
-      ElMessage.success('登录成功');
+      messageManager.success('登录成功');
     } else {
       // 其他错误，显示错误消息
-      ElMessage.error(err.message || '登录失败，请稍后重试');
+      messageManager.error(err.message || '登录失败，请稍后重试');
     }
     isLoggingIn.value = false;
   }
@@ -240,9 +261,7 @@ const handleSubmit = async () => {
 
 // 清理定时器
 const cleanup = () => {
-  if (countdownTimer) {
-    clearInterval(countdownTimer);
-  }
+  stopCountdown();
 };
 
 // 组件卸载时清理

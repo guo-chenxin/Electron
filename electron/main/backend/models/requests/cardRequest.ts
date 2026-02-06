@@ -34,7 +34,6 @@ export interface UpdateCardRequest {
   title?: string;
   description?: string;
   icon?: string;
-  isFavorite?: boolean;
   routeId?: number;
   routePath?: string;
   redirect?: string;

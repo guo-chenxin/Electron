@@ -1,15 +1,6 @@
 import { createRouter, createWebHashHistory, RouteRecordRaw } from 'vue-router'
 import { baseStaticRoutes, convertDbRoutesToVueRoutes } from './routes'
 
-// 添加electron的类型声明
-declare global {
-  interface Window {
-    electronAPI: {
-      invoke: <T = any>(channel: string, ...args: any[]) => Promise<T>
-    }
-  }
-}
-
 // 创建路由实例
 const router = createRouter({
   history: createWebHashHistory(),
@@ -40,7 +31,7 @@ export async function loadDynamicRoutes() {
     // 从主进程获取路由配置
     const routesFromDb = await window.electronAPI.invoke<any[]>('api:routes:getAllNested')
     
-    console.log('Routes from database:', routesFromDb)
+
     
     // 将数据库路由转换为Vue Router格式
     const dynamicRoutes = convertDbRoutesToVueRoutes(routesFromDb)
@@ -51,7 +42,7 @@ export async function loadDynamicRoutes() {
     })
     
     isRoutesLoaded = true
-    console.log('Dynamic routes loaded successfully')
+
     
     // 如果当前路由是404，重定向到首页
     if (router.currentRoute.value.path === '/404') {

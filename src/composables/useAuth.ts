@@ -1,16 +1,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { ElMessage } from 'element-plus';
+import { messageManager } from '../utils/messageManager';
 import type { User, AuthState, AuthResponse, RefreshTokenResponse } from '../types/auth';
-
-// 扩展Window接口，添加electronAPI类型定义
-declare global {
-  interface Window {
-    electronAPI: {
-      invoke: <T = any>(channel: string, ...args: any[]) => Promise<T>;
-    };
-  }
-}
 
 // 常量定义
 const REFRESH_INTERVAL = 4 * 60 * 1000; // 4分钟
@@ -71,7 +62,7 @@ const initializeAuthState = (): AuthState => {
  */
 export function useAuth() {
   const router = useRouter();
-  const refreshTimer = ref<number | null>(null);
+  const refreshController = ref<AbortController | null>(null);
 
   // 单例模式：确保全局只有一个authState实例
   if (!globalAuthState) {
@@ -94,7 +85,7 @@ export function useAuth() {
       localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, refreshToken);
     } catch (error) {
       console.error('Failed to save auth info to localStorage:', error);
-      ElMessage.error('保存登录信息失败，请检查浏览器设置');
+      messageManager.error('保存登录信息失败，请检查浏览器设置');
     }
   };
 
@@ -116,11 +107,17 @@ export function useAuth() {
    * @param userId 用户ID
    */
   const startTokenRefresh = (userId: number) => {
-    if (refreshTimer.value) {
-      clearInterval(refreshTimer.value);
-    }
+    // 停止现有的刷新
+    stopTokenRefresh();
 
-    refreshTimer.value = window.setInterval(async () => {
+    // 创建新的控制器
+    refreshController.value = new AbortController();
+    const { signal } = refreshController.value;
+
+    // 使用 setTimeout 实现可取消的定时器
+    const refreshToken = async () => {
+      if (signal.aborted) return;
+
       try {
         const result = await window.electronAPI.invoke<any>('api:auth:refreshToken', userId);
         if (result.status === 'success' && result.data) {
@@ -129,19 +126,27 @@ export function useAuth() {
         }
       } catch (error) {
         console.error('Failed to refresh token:', error);
-        ElMessage.warning('登录已过期，请重新登录');
+        messageManager.warning('登录已过期，请重新登录');
         logout();
+      } finally {
+        // 设置下一次刷新
+        if (!signal.aborted) {
+          setTimeout(refreshToken, REFRESH_INTERVAL);
+        }
       }
-    }, REFRESH_INTERVAL);
+    };
+
+    // 启动第一次刷新
+    setTimeout(refreshToken, REFRESH_INTERVAL);
   };
 
   /**
    * 停止令牌刷新
    */
   const stopTokenRefresh = () => {
-    if (refreshTimer.value) {
-      clearInterval(refreshTimer.value);
-      refreshTimer.value = null;
+    if (refreshController.value) {
+      refreshController.value.abort();
+      refreshController.value = null;
     }
   };
 
@@ -185,7 +190,7 @@ export function useAuth() {
       return false;
     } catch (error) {
       console.error('Login with code failed:', error);
-      ElMessage.error(error instanceof Error ? error.message : '登录失败，请稍后重试');
+      // 不在这里显示错误提示，由调用方处理
       return false;
     }
   };
@@ -206,7 +211,7 @@ export function useAuth() {
       return false;
     } catch (error) {
       console.error('Login with password failed:', error);
-      ElMessage.error(error instanceof Error ? error.message : '登录失败，请检查邮箱和密码');
+      // 不在这里显示错误提示，由调用方处理
       return false;
     }
   };

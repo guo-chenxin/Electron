@@ -33,7 +33,6 @@ const checkVisibleMenus = async () => {
   try {
     // 检查window.electronAPI是否存在
     if (!window.electronAPI) {
-      console.warn('window.electronAPI is not available, using default menu visibility');
       hasVisibleMenus.value = false;
       return;
     }
@@ -43,8 +42,7 @@ const checkVisibleMenus = async () => {
     
     // 提取当前路由的第一级路径
     const pathParts = route.path.split('/').filter(Boolean)
-    const firstLevelPath = pathParts.length > 0 ? `/${pathParts[0]}` : '/'  
-    console.log('First level path:', firstLevelPath)
+    const firstLevelPath = pathParts.length > 0 ? `/${pathParts[0]}` : '/'
     
     // 查找当前路由对应的菜单
     const findCurrentMenu = (routes: any[]): any => {
@@ -63,7 +61,6 @@ const checkVisibleMenus = async () => {
     }
     
     const currentMenu = findCurrentMenu(routesFromDb)
-    console.log('Current menu:', currentMenu)
     
     // 检查当前菜单是否有可见的子菜单项
     const hasVisibleChildMenus = (menu: any): boolean => {
@@ -76,10 +73,8 @@ const checkVisibleMenus = async () => {
     }
     
     const result = hasVisibleChildMenus(currentMenu)
-    console.log('Has visible child menus:', result)
     hasVisibleMenus.value = result
   } catch (error) {
-    console.error('Failed to check visible menus:', error)
     hasVisibleMenus.value = false
   }
 }

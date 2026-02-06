@@ -12,7 +12,7 @@
           :title="card.title"
           :description="card.description"
           :icon="card.icon"
-          :is-favorite="card.isFavorite"
+
           @click="navigateToCard(card)"
         />
       </div>
@@ -48,15 +48,12 @@
       :style="{ left: contextMenuPosition.x + 'px', top: contextMenuPosition.y + 'px' }"
       @click.stop
     >
-      <el-menu default-active="1" class="context-menu-items">
-        <el-menu-item @click="handleEditCardClick">
+      <el-menu class="context-menu-items">
+        <el-menu-item index="1" @click="handleEditCardClick">
           <span>编辑卡片</span>
         </el-menu-item>
-        <el-menu-item @click="handleDeleteCardClick">
+        <el-menu-item index="2" @click="handleDeleteCardClick">
           <span>删除卡片</span>
-        </el-menu-item>
-        <el-menu-item @click="handleToggleFavoriteClick">
-          <span>{{ selectedCard?.isFavorite ? '移除收藏' : '添加收藏' }}</span>
         </el-menu-item>
       </el-menu>
     </div>
@@ -66,7 +63,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessageBox } from 'element-plus'
+import { messageManager } from '../../utils/messageManager'
 import ProjectCard from '../../components/main-window/ProjectCard.vue'
 import AddCardDialog from '../../components/main-window/AddCardDialog.vue'
 import { loadDynamicRoutes } from '../../router'
@@ -91,7 +89,6 @@ interface Card {
   title: string
   description: string
   icon: string
-  isFavorite: boolean
   type?: string
   routePath: string
   redirect?: string
@@ -109,7 +106,6 @@ interface Card {
     showInTabs?: boolean
     order?: number
   }>
-  lastClickedAt: string
   createdAt: string
   updatedAt: string
 }
@@ -197,11 +193,6 @@ const showContextMenu = (event: MouseEvent, card: Card) => {
 
 // 导航到卡片对应的路由
 const navigateToCard = (card: Card) => {
-  // 更新卡片的最近访问时间
-  window.electronAPI.invoke('api:cards:click', card.id).catch((error: any) => {
-    console.error('Failed to update card click time:', error)
-  })
-  
   // 跳转到对应的路由
   router.push(card.routePath)
 }
@@ -222,7 +213,9 @@ const handleSaveCard = async (cardData: any) => {
       // 重新加载标签页配置，确保新创建的路由被添加到标签页配置中
       await fetchRoutesForTabs()
       
-      console.log('Dynamic routes and tab config reloaded after card creation')
+
+      
+      messageManager.success('项目添加成功')
     }
   } catch (error: any) {
     console.error('Failed to save card:', error)
@@ -232,10 +225,10 @@ const handleSaveCard = async (cardData: any) => {
       title: cardData.title,
       description: cardData.description,
       icon: cardData.icon,
-      isFavorite: false,
+
       type: cardData.type || 'project',
       routePath: cardData.routePath,
-      lastClickedAt: new Date().toISOString(),
+
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     }
@@ -272,7 +265,7 @@ const handleEditCard = async (cardData: any) => {
       // 重新加载标签页配置，确保更新后的路由被添加到标签页配置中
       await fetchRoutesForTabs()
       
-      ElMessage.success('卡片编辑成功')
+      messageManager.success('卡片编辑成功')
     }
   } catch (error: any) {
     console.error('Failed to update card:', error)
@@ -286,7 +279,7 @@ const handleEditCard = async (cardData: any) => {
       }
     }
     
-    ElMessage.success('卡片编辑成功')
+    messageManager.warning('卡片编辑失败，已更新本地状态')
   }
 }
 
@@ -318,53 +311,17 @@ const handleDeleteCardClick = async () => {
     // 重新加载标签页配置，确保删除后的路由配置被更新
     await fetchRoutesForTabs()
     
-    ElMessage.success('卡片删除成功')
+    messageManager.success('卡片删除成功')
     contextMenuVisible.value = false
   } catch (error: any) {
     if (error !== 'cancel') {
       console.error('Failed to delete card:', error)
-      ElMessage.error('卡片删除失败')
+      messageManager.error('卡片删除失败')
     }
   }
 }
 
-// 处理添加/移除收藏点击
-const handleToggleFavoriteClick = async () => {
-  if (!selectedCard.value) return
-  
-  try {
-    // 调用API更新收藏状态
-    const updatedCard = await window.electronAPI.invoke<Card>('api:cards:update', selectedCard.value.id, {
-      isFavorite: !selectedCard.value.isFavorite
-    })
-    
-    if (updatedCard) {
-      // 更新本地卡片数据
-      const index = cards.value.findIndex(card => card.id === selectedCard.value!.id)
-      if (index !== -1) {
-        cards.value[index] = updatedCard
-      }
-      
-      ElMessage.success(updatedCard.isFavorite ? '添加收藏成功' : '移除收藏成功')
-    }
-  } catch (error: any) {
-    console.error('Failed to update favorite status:', error)
-    
-    // 即使API调用失败，也更新本地状态以提供更好的用户体验
-    if (selectedCard.value) {
-      const updatedIsFavorite = !selectedCard.value.isFavorite
-      const index = cards.value.findIndex(card => card.id === selectedCard.value!.id)
-      if (index !== -1) {
-        cards.value[index].isFavorite = updatedIsFavorite
-      }
-      ElMessage.success(updatedIsFavorite ? '添加收藏成功' : '移除收藏成功')
-    } else {
-      ElMessage.error('更新收藏状态失败')
-    }
-  }
-  
-  contextMenuVisible.value = false
-}
+
 </script>
 
 <style scoped>

@@ -48,8 +48,6 @@ export default {
     // 保存活动菜单项到全局状态
     const saveActiveMenu = (menuPath: string) => {
       globalActiveMenu = menuPath
-      console.log('Main window: Saved active menu:', menuPath)
-      console.log('Main window: Global active menu:', globalActiveMenu)
     }
 
     // 从全局状态获取活动菜单项
@@ -59,16 +57,9 @@ export default {
 
     // 从路由中获取当前激活标签页对应的菜单
     const currentMenuItems = computed(() => {
-      // 检查当前路由路径，确定显示哪个标签页的菜单
-      console.log('Current route path:', route.path)
-      console.log('All menu items:', menuItems.value)
-      
       // 显示主窗口的二级菜单
       const mainMenu = menuItems.value.find(item => item.path === '/')
-      console.log('Main menu:', mainMenu)
-      const result = mainMenu?.children || []
-      console.log('Main menu children:', result)
-      return result
+      return mainMenu?.children || []
     })
 
     // 将菜单扁平化为一级菜单，直接显示所有菜单项
@@ -102,32 +93,28 @@ export default {
 
     // 处理菜单项点击，使用router.push进行路由跳转
     const handleMenuItemClick = (path: string) => {
-      console.log('菜单点击:', path)
+      // 先更新activeMenu，再跳转路由
+      activeMenu.value = path
+      saveActiveMenu(path)
       // 使用router.push进行路由跳转，确保路由变化能被Vue Router捕获
       router.push(path)
     }
 
     // 监听路由变化，更新激活的菜单
     watch(() => route.path, (newPath) => {
-      console.log('Main window: Route changed to:', newPath)
-      
       // 检查当前路径是否是二级菜单（深度至少为2）
       const pathDepth = newPath.split('/').filter(Boolean).length
-      console.log('Main window: Path depth:', pathDepth)
       
       if (pathDepth >= 2) {
         // 直接更新activeMenu，不需要等待nextTick
-        console.log('Main window: Setting active menu to current path:', newPath)
         activeMenu.value = newPath
         // 保存到全局状态
         saveActiveMenu(newPath)
       } else {
         // 尝试从全局状态恢复之前的活动菜单项
         const savedMenu = getActiveMenu()
-        console.log('Main window: Saved menu from global state:', savedMenu)
         
         if (savedMenu) {
-          console.log('Main window: Restoring saved menu:', savedMenu)
           activeMenu.value = savedMenu
           // 跳转到保存的菜单项对应的路径
           router.push(savedMenu)
@@ -135,7 +122,6 @@ export default {
           // 如果没有保存的菜单项，默认激活当前标签页的第一个菜单项
           const firstMenuItem = currentMenuItems.value[0]
           if (firstMenuItem) {
-            console.log('Main window: No saved menu, using first menu item:', firstMenuItem.path)
             activeMenu.value = firstMenuItem.path
             // 保存到全局状态
             saveActiveMenu(firstMenuItem.path)
@@ -144,36 +130,24 @@ export default {
           }
         }
       }
-      
-      console.log('Main window: Final active menu:', activeMenu.value)
     })
 
     // 获取路由数据
     const fetchRoutes = async () => {
       try {
-        console.log('Fetching routes from database...')
-        
         // 检查window.electronAPI是否存在
         if (!window.electronAPI) {
-          console.warn('window.electronAPI is not available, using default menu items');
           return;
         }
         
         // 从主进程获取路由配置
         const routesFromDb = await window.electronAPI.invoke<any[]>('api:routes:getAllNested')
         
-        console.log('Routes from database:', routesFromDb)
-        
         // 递归处理嵌套路由，提取所有菜单项，保持嵌套结构
         const extractMenuItems = (routes: any[]): MenuItem[] => {
           const items: MenuItem[] = []
           
-          console.log('Processing routes for menu:', routes)
-          
           for (const route of routes) {
-            console.log('Processing route:', route.path)
-            console.log('Route showInMenu:', route.showInMenu)
-            
             // 如果该路由显示在菜单中，添加到菜单列表
             if (route.showInMenu) {
               const menuItem: MenuItem = {
@@ -182,19 +156,12 @@ export default {
                 icon: route.icon
               }
               
-              console.log('Creating menu item:', menuItem)
-              
               // 处理子路由，递归提取
               if (route.children && route.children.length > 0) {
-                console.log('Route has children:', route.children)
                 menuItem.children = extractMenuItems(route.children)
-                console.log('Menu item children:', menuItem.children)
               }
               
               items.push(menuItem)
-              console.log('Added menu item to list:', menuItem)
-            } else {
-              console.log('Route not shown in menu:', route.path)
             }
           }
           
@@ -203,9 +170,7 @@ export default {
         
         // 提取所有菜单项，保持嵌套结构
         const allItems = extractMenuItems(routesFromDb)
-        console.log('All extracted menu items:', allItems)
         menuItems.value = allItems
-        console.log('menuItems ref updated:', menuItems.value)
         
         // 强制触发重排，确保UnoCSS能检测到新添加的图标类名
         nextTick(() => {
@@ -227,18 +192,11 @@ export default {
         
         // 确保activeMenu正确设置
         if (currentMenuItems.value.length > 0) {
-          console.log('Main window: Current menu items:', currentMenuItems.value)
-          
           // 1. 首先检查当前路由路径是否对应一个菜单项
-          console.log('Main window: Current route path:', route.path)
-          
-          // 检查当前路由是否是菜单项
           const currentRouteIsMenu = currentMenuItems.value.some(item => item.path === route.path)
-          console.log('Main window: Current route is menu item:', currentRouteIsMenu)
           
           if (currentRouteIsMenu) {
             // 如果当前路由是菜单项，直接设置为activeMenu
-            console.log('Main window: Setting active menu to current route:', route.path)
             activeMenu.value = route.path
             // 保存到全局状态
             saveActiveMenu(route.path)
@@ -247,15 +205,12 @@ export default {
           
           // 2. 如果当前路由不是菜单项，尝试从全局状态恢复之前的活动菜单项
           const currentActiveMenu = getActiveMenu()
-          console.log('Main window: Current active menu from global state:', currentActiveMenu)
           
           if (currentActiveMenu) {
             // 检查恢复的菜单项是否存在
             const menuExists = currentMenuItems.value.some(item => item.path === currentActiveMenu)
-            console.log('Main window: Menu exists check:', menuExists)
             
             if (menuExists) {
-              console.log('Main window: Restoring saved menu from global state:', currentActiveMenu)
               activeMenu.value = currentActiveMenu
               return
             }
@@ -264,14 +219,13 @@ export default {
           // 3. 如果没有保存的菜单项或保存的菜单项不存在，默认激活第一个菜单项
           const firstMenuItem = currentMenuItems.value[0]
           if (firstMenuItem) {
-            console.log('Main window: No saved menu or menu not found, using first menu item:', firstMenuItem.path)
             activeMenu.value = firstMenuItem.path
             // 保存到全局状态
             saveActiveMenu(firstMenuItem.path)
           }
         }
       } catch (error) {
-        console.error('Failed to fetch routes:', error)
+        // 静默处理错误
       }
     }
 
@@ -293,7 +247,7 @@ export default {
 <style scoped>
 /* 左侧菜单样式 */
 .main-window-menu {
-  width: 200px;
+  width: 190px;
   height: 100%;
   background-color: #ffffff;
   border-right: 1px solid #e6e6e6;
@@ -309,5 +263,18 @@ export default {
 /* 图标间距 */
 .main-window-menu :deep(.el-menu-item i[class^="i-carbon-"]) {
   margin-right: 8px;
+}
+
+/* 激活菜单项样式 */
+.main-window-menu :deep(.el-menu-item.is-active) {
+  background-color: #ecf5ff !important;
+  color: #409eff !important;
+  font-weight: 500;
+}
+
+/* 激活菜单项鼠标悬停样式 */
+.main-window-menu :deep(.el-menu-item.is-active:hover) {
+  background-color: #ecf5ff !important;
+  color: #409eff !important;
 }
 </style>

@@ -40,11 +40,7 @@ export const staticRoutes: RouteRecordRaw[] = [
  * 用于初始化路由实例
  */
 export const baseStaticRoutes: RouteRecordRaw[] = [
-  {
-    path: '/login',
-    component: () => import('../views/Login.vue'),
-    meta: { title: '登录', requiresAuth: false }
-  }
+  staticRoutes[0] // 复用登录路由配置，避免重复
 ]
 
 /**
@@ -76,7 +72,7 @@ export interface AppRouteRecordRaw {
  */
 export function validateRoutePath(path: string): boolean {
   // 路由必须以/开头
-  if (!path.startsWith('/')) {
+  if (!path?.startsWith('/')) {
     return false
   }
   
@@ -94,6 +90,8 @@ export function validateRoutePath(path: string): boolean {
  * @returns PascalCase格式的组件名称
  */
 export function generateComponentName(name: string): string {
+  if (!name) return ''
+  
   return name
     .split('-')
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
@@ -141,53 +139,45 @@ export function loadRouteComponent(path: string): () => Promise<any> {
  */
 export function convertDbRoutesToVueRoutes(dbRoutes: any[]): RouteRecordRaw[] {
   return dbRoutes.map(dbRoute => {
+    // 使用空值合并操作符和可选链操作符简化代码
     const routeConfig: any = {
       path: dbRoute.path,
       name: dbRoute.name,
       redirect: dbRoute.redirect,
       meta: {
-        title: dbRoute.title || '',
+        title: dbRoute.title ?? '',
         icon: dbRoute.icon,
         requiresAuth: dbRoute.requiresAuth !== false,
         permission: dbRoute.permission,
         keepAlive: dbRoute.keepAlive === true,
         showInMenu: dbRoute.showInMenu !== false,
         showInTabs: dbRoute.showInTabs !== false,
-        order: dbRoute.order || 0
+        order: dbRoute.order ?? 0
       }
     }
-    
-    // 添加调试日志
-    console.log('Processing route:', dbRoute.path)
     
     // 根据路由路径动态生成组件导入路径
     // 1. 根路径使用主窗口模板
     if (dbRoute.path === '/') {
       routeConfig.component = loadRouteComponent(dbRoute.path)
-      console.log('Layout component used for:', dbRoute.path, '../components/template/main-window/MainWindowLayout.vue')
     } 
     // 2. 项目根路由
     else if (!dbRoute.parentId) {
       // 所有项目根路由都使用通用项目模板
       routeConfig.component = loadRouteComponent(dbRoute.path)
-      console.log('Layout component used for project:', dbRoute.path, '../components/template/general/RegularLayout.vue')
     } 
     // 3. 子路由或其他路由，根据路径生成对应的组件导入
-    else {
-      // 跳过布局组件的配置，只处理内容组件
-      if (!dbRoute.redirect) {
-        try {
-          routeConfig.component = loadRouteComponent(dbRoute.path)
-        } catch (error) {
-          console.error('Error loading component for route:', dbRoute.path, error)
-          // 提供一个默认组件，避免路由错误
-          routeConfig.component = () => import('../views/NotFound.vue')
-        }
+    else if (!dbRoute.redirect) {
+      try {
+        routeConfig.component = loadRouteComponent(dbRoute.path)
+      } catch (error) {
+        // 提供一个默认组件，避免路由错误
+        routeConfig.component = () => import('../views/NotFound.vue')
       }
     }
     
     // 处理子路由
-    if (dbRoute.children && dbRoute.children.length > 0) {
+    if (dbRoute.children?.length > 0) {
       routeConfig.children = convertDbRoutesToVueRoutes(dbRoute.children)
     }
     

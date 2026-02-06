@@ -6,7 +6,6 @@ export interface Card {
   title: string;
   description?: string;
   icon?: string;
-  isFavorite: boolean;
   routeId?: number; // 关联的路由ID
   routePath?: string; // 跳转路由
   redirect?: string; // 重定向路径
