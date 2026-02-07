@@ -53,14 +53,45 @@ const indexHtml = path.join(RENDERER_DIST, 'index.html')
 
 // 创建主窗口
 async function createMainWindow() {
-  // 1. 创建窗口（隐藏状态）
+  // 1. 获取屏幕尺寸，根据屏幕大小调整窗口尺寸
+  const primaryDisplay = screen.getPrimaryDisplay()
+  const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize
+  
+  // 智能计算窗口大小，根据屏幕尺寸自动调整比例
+  let widthRatio = 0.79 // 默认宽度比例
+  let heightRatio = 0.99 // 默认高度比例
+  
+  // 屏幕尺寸判断
+  const isSmallScreen = screenHeight < 900 || screenWidth < 1400
+  const isLargeScreen = screenHeight > 1080 && screenWidth > 1920
+  
+  // 根据屏幕尺寸调整比例
+  if (isSmallScreen) {
+    // 小屏幕使用更大的比例
+    widthRatio = 0.79
+    heightRatio = 0.99
+  } else if (isLargeScreen) {
+    // 大屏幕使用更小的比例
+    widthRatio = 0.8
+    heightRatio = 0.9
+  }
+  
+  // 计算最终窗口大小
+  const windowWidth = Math.min(1400, Math.floor(screenWidth * widthRatio))
+  const windowHeight = Math.min(900, Math.floor(screenHeight * heightRatio))
+  
+  // 确保窗口尺寸不小于最小要求
+  const minWindowWidth = Math.min(1024, Math.floor(screenWidth * 0.75))
+  const minWindowHeight = Math.min(768, Math.floor(screenHeight * 0.8))
+
+  // 2. 创建窗口（隐藏状态）
   mainWindow = new BrowserWindow({
     title: 'Main window',
     icon: path.join(process.env.VITE_PUBLIC, 'logo.svg'),
-    width: 1400, // 初始宽度，参考Apifox
-    height: 900, // 初始高度，参考Apifox
-    minWidth: 1024, // 最小宽度
-    minHeight: 768, // 最小高度
+    width: windowWidth, // 初始宽度，根据屏幕大小调整
+    height: windowHeight, // 初始高度，根据屏幕大小调整
+    minWidth: minWindowWidth, // 最小宽度，根据屏幕大小调整
+    minHeight: minWindowHeight, // 最小高度，根据屏幕大小调整
     show: false, // 先隐藏，等加载完成后再显示
     backgroundColor: '#ffffff', // 背景色
     frame: false, // 完全隐藏默认标题栏和窗口控制按钮
@@ -76,10 +107,8 @@ async function createMainWindow() {
     },
   })
 
-  // 2. 设置窗口位置到屏幕中央
-  const primaryDisplay = screen.getPrimaryDisplay()
-  const { width, height } = primaryDisplay.workAreaSize
-  mainWindow.setPosition(Math.floor((width - 1400) / 2), Math.floor((height - 900) / 2))
+  // 3. 设置窗口位置到屏幕中央
+  mainWindow.setPosition(Math.floor((screenWidth - windowWidth) / 2), Math.floor((screenHeight - windowHeight) / 2))
 
   // 3. 注册 ready-to-show 事件监听器（优先使用事件）
   let windowShown = false

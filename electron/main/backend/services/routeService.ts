@@ -88,7 +88,14 @@ export class RouteService extends BaseService<Route, CreateRouteRequest, UpdateR
   private buildNestedRoutes(routes: Route[], parentId: number | null = null): Route[] {
     return routes
       .filter(route => route.parentId === parentId)
-      .sort((a, b) => (a.order || 0) - (b.order || 0))
+      .sort((a, b) => {
+        // 首先按照order字段排序
+        if ((a.order || 0) !== (b.order || 0)) {
+          return (a.order || 0) - (b.order || 0);
+        }
+        // order相同则按照创建时间排序
+        return new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime();
+      })
       .map(route => ({
         ...route,
         children: this.buildNestedRoutes(routes, route.id)

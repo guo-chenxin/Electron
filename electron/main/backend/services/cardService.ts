@@ -44,19 +44,29 @@ export class CardService extends BaseService<Card, CreateCardRequest, UpdateCard
         card.order = rootRoute.order;
       }
       
-      // 获取子路由作为菜单项
+      // 获取子路由作为菜单项，并按照order字段排序，order相同则按创建时间排序
       const childRoutes = routeService.getAll().filter(route => route.parentId === row.route_id);
-      card.menuItems = childRoutes.map(route => ({
-        id: route.id,
-        title: route.title || '',
-        icon: route.icon || '',
-        routePath: route.path || '',
-        component: route.component || '',
-        requiresAuth: route.requiresAuth,
-        showInMenu: route.showInMenu,
-        showInTabs: route.showInTabs,
-        order: route.order
-      }));
+      card.menuItems = childRoutes
+        .map(route => ({
+          id: route.id,
+          title: route.title || '',
+          icon: route.icon || '',
+          routePath: route.path || '',
+          component: route.component || '',
+          requiresAuth: route.requiresAuth,
+          showInMenu: route.showInMenu,
+          showInTabs: route.showInTabs,
+          order: route.order,
+          createdAt: route.createdAt
+        }))
+        .sort((a, b) => {
+          // 首先按照order字段排序
+          if ((a.order || 0) !== (b.order || 0)) {
+            return (a.order || 0) - (b.order || 0);
+          }
+          // order相同则按照创建时间排序
+          return new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime();
+        });
     }
 
     return card;

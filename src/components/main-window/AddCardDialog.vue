@@ -1,13 +1,9 @@
 <template>
-  <div v-if="visible" class="add-project-overlay" @click="handleClose">
-    <div class="add-project-dialog" @click.stop>
-      <!-- 自定义关闭按钮 -->
-      <div class="dialog-close-wrapper">
-        <button class="dialog-close-btn" @click="handleClose" title="关闭">
-          <span class="i-carbon-close"></span>
-        </button>
-      </div>
-      
+  <Dialog
+    :visible="visible"
+    @close="handleClose"
+  >
+    <div class="add-project-content">
       <!-- 左侧路由卡片区域 -->
       <div class="left-panel">
         <div class="panel-header">
@@ -189,7 +185,7 @@
         </div>
       </div>
     </div>
-  </div>
+  </Dialog>
 </template>
 
 <script setup lang="ts">
@@ -197,6 +193,7 @@ import { ref, reactive, watch } from 'vue'
 import { messageManager } from '../../utils/messageManager'
 import RouteCard from './RouteCard.vue'
 import AddMenuItemButton from './AddMenuItemButton.vue'
+import Dialog from '../common/Dialog.vue'
 import { iconList } from '../../config/icons'
 import { projectFormRules, menuItemFormRules } from '../../validators'
 import { deepClone, generateDefaultMenuItem, generateDefaultProjectForm } from '../../utils'
@@ -256,8 +253,16 @@ watch(() => visible, (newVal) => {
         showInMenu: item.showInMenu !== undefined ? item.showInMenu : true,
         showInTabs: item.showInTabs !== undefined ? item.showInTabs : false,
         requiresAuth: item.requiresAuth !== undefined ? item.requiresAuth : true,
-        order: item.order !== undefined ? item.order : 1
-      }))
+        order: item.order !== undefined ? item.order : 1,
+        createdAt: item.createdAt || new Date().toISOString()
+      })).sort((a, b) => {
+        // 首先按照order字段排序，order相同则按照创建时间排序
+        if ((a.order || 0) !== (b.order || 0)) {
+          return (a.order || 0) - (b.order || 0)
+        }
+        // order相同则按照创建时间排序
+        return new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
+      })
     } else {
       // 如果没有菜单项，添加默认菜单项
       projectForm.menuItems = [generateDefaultMenuItem(1)]
@@ -302,8 +307,16 @@ watch(() => cardData, (newVal) => {
         showInMenu: item.showInMenu !== undefined ? item.showInMenu : true,
         showInTabs: item.showInTabs !== undefined ? item.showInTabs : false,
         requiresAuth: item.requiresAuth !== undefined ? item.requiresAuth : true,
-        order: item.order !== undefined ? item.order : 1
-      }))
+        order: item.order !== undefined ? item.order : 1,
+        createdAt: item.createdAt || new Date().toISOString()
+      })).sort((a, b) => {
+        // 首先按照order字段排序，order相同则按照创建时间排序
+        if ((a.order || 0) !== (b.order || 0)) {
+          return (a.order || 0) - (b.order || 0)
+        }
+        // order相同则按照创建时间排序
+        return new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
+      })
     } else {
       // 如果没有菜单项，添加默认菜单项
       projectForm.menuItems = [generateDefaultMenuItem(1)]
@@ -323,7 +336,12 @@ const selectItem = (type: 'root' | 'menu', index: number | null) => {
 
 // 添加菜单项
 const addMenuItem = () => {
-  const newOrder = projectForm.menuItems.length + 1
+  // 计算新菜单项的顺序，基于现有菜单项的最大顺序值加1
+  const maxOrder = projectForm.menuItems.length > 0 
+    ? Math.max(...projectForm.menuItems.map(item => item.order || 0)) 
+    : 0
+  const newOrder = maxOrder + 1
+  
   projectForm.menuItems.push(generateDefaultMenuItem(newOrder))
   
   // 自动选择新添加的菜单项
@@ -333,15 +351,31 @@ const addMenuItem = () => {
 }
 
 // 删除菜单项
-const removeMenuItem = (index: number) => {
+const removeMenuItem = async (index: number) => {
   if (projectForm.menuItems.length <= 1) {
     return // 至少保留一个菜单项
   }
-  projectForm.menuItems.splice(index, 1)
   
-  // 如果删除的是当前选中的菜单项，重新选择第一个菜单项
-  if (selectedItem.type === 'menu' && selectedItem.index === index) {
-    selectItem('menu', 0)
+  try {
+    const menuItem = projectForm.menuItems[index]
+    
+    // 如果菜单项有ID，调用后端API删除对应的路由记录
+    if (menuItem.id) {
+      await window.electronAPI.invoke('api:routes:delete', menuItem.id)
+    }
+    
+    // 从前端数组中删除菜单项
+    projectForm.menuItems.splice(index, 1)
+    
+    // 如果删除的是当前选中的菜单项，重新选择第一个菜单项
+    if (selectedItem.type === 'menu' && selectedItem.index === index) {
+      selectItem('menu', 0)
+    }
+    
+    messageManager.success('菜单项删除成功')
+  } catch (error) {
+    console.error('Failed to delete menu item:', error)
+    messageManager.error('菜单项删除失败')
   }
 }
 
@@ -427,6 +461,15 @@ const resetForm = () => {
 </script>
 
 <style scoped>
+/* 新增：弹窗内容容器样式 */
+.add-project-content {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  min-height: 500px;
+  overflow: hidden;
+}
+
 /* 基础样式 */
 .dialog-footer {
   display: flex;
@@ -472,95 +515,6 @@ const resetForm = () => {
   font-style: normal;
 }
 
-/* 自定义弹窗样式 - 与账号设置弹窗一致 */
-.add-project-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  animation: fadeIn 0.2s ease;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.add-project-dialog {
-  display: flex;
-  width: 900px;
-  height: 650px;
-  background-color: white;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  overflow: hidden;
-  animation: slideIn 0.3s ease;
-  position: relative;
-}
-
-@keyframes slideIn {
-  from { transform: translateY(-20px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
-}
-
-/* 核心修复：自定义关闭按钮样式 */
-
-/* 1. 关闭按钮容器 - 确保按钮位于正确位置 */
-.dialog-close-wrapper {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  z-index: 10;
-}
-
-/* 2. 关闭按钮样式 - 与账号设置弹窗完全一致 */
-.dialog-close-btn {
-  background: transparent;
-  border: none;
-  font-size: 18px;
-  cursor: pointer;
-  padding: 0;
-  border-radius: 0;
-  color: #999;
-  outline: none;
-  box-shadow: none;
-  width: auto;
-  height: auto;
-  min-width: auto;
-  line-height: 1;
-}
-
-/* 3. 悬停效果 - 只改变颜色 */
-.dialog-close-btn:hover {
-  background-color: transparent;
-  color: #666;
-  box-shadow: none !important;
-  transform: none;
-}
-
-/* 4. 焦点状态 - 移除所有焦点样式 */
-.dialog-close-btn:focus,
-.dialog-close-btn:active,
-.dialog-close-btn:focus-visible {
-  outline: none !important;
-  box-shadow: none !important;
-  background-color: transparent !important;
-}
-
-/* 5. 图标样式 */
-.dialog-close-btn span {
-  display: inline-block;
-  padding: 4px;
-  transition: color 0.2s ease;
-  font-style: normal;
-}
-
 /* 左侧面板样式 */
 .left-panel {
   width: 300px;
@@ -578,14 +532,30 @@ const resetForm = () => {
   display: flex;
   flex-direction: column;
   padding: 20px;
-  position: relative;
+  min-height: 400px;
 }
 
 /* 面板内容区域 - 可滚动 */
 .panel-content {
   flex: 1;
   overflow-y: auto;
-  padding-bottom: 80px; /* 为底部按钮留出空间 */
+  margin-bottom: 0;
+  padding-right: 15px;
+}
+
+/* 确保表单内容能正常显示 */
+:deep(.el-form) {
+  overflow: visible;
+}
+
+/* 关键修复：减少最后一个表单元素到底部间隔线的间距 */
+:deep(.el-form-item:last-child) {
+  margin-bottom: 0 !important;
+}
+
+/* 确保表单容器没有额外的底部间距 */
+:deep(.el-form) {
+  margin-bottom: 0 !important;
 }
 
 /* 面板头部样式 */
@@ -605,17 +575,13 @@ const resetForm = () => {
 
 /* 底部按钮 - 固定在右下角 */
 .dialog-footer {
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  left: 0;
   display: flex;
   justify-content: flex-end;
   gap: 10px;
-  padding: 20px;
   background-color: white;
   border-top: 1px solid #e6e6e6;
   z-index: 10;
+  margin-top: auto;
 }
 
 /* 菜单路由区域样式 */
@@ -658,30 +624,34 @@ const resetForm = () => {
 
 /* 滚动条样式 - 优化为更细的圆头滚动条 */
 .left-panel::-webkit-scrollbar,
-.right-panel::-webkit-scrollbar {
+.right-panel::-webkit-scrollbar,
+.panel-content::-webkit-scrollbar {
   width: 3px;
   margin-right: 5px;
 }
 
 .left-panel::-webkit-scrollbar-track,
-.right-panel::-webkit-scrollbar-track {
+.right-panel::-webkit-scrollbar-track,
+.panel-content::-webkit-scrollbar-track {
   background: transparent;
   border-radius: 3px;
 }
 
 .left-panel::-webkit-scrollbar-thumb,
-.right-panel::-webkit-scrollbar-thumb {
+.right-panel::-webkit-scrollbar-thumb,
+.panel-content::-webkit-scrollbar-thumb {
   background: rgba(168, 168, 168, 0.4);
   border-radius: 3px;
   transition: background 0.3s ease;
 }
 
 .left-panel::-webkit-scrollbar-thumb:hover,
-.right-panel::-webkit-scrollbar-thumb:hover {
+.right-panel::-webkit-scrollbar-thumb:hover,
+.panel-content::-webkit-scrollbar-thumb:hover {
   background: rgba(140, 140, 140, 0.6);
 }
 
-/* 确保滚动条不影响关闭按钮 */
+/* 确保滚动条不影响内容 */
 .right-panel {
   padding-right: 15px;
 }
@@ -722,7 +692,7 @@ const resetForm = () => {
 
 /* 嵌套表单项目样式 */
 .switch-form-item {
-  margin-bottom: 20px;
+  margin-bottom: 10px;
 }
 
 .inline-switch-item {

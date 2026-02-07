@@ -237,8 +237,18 @@ const handleSaveCard = async (cardData: any) => {
 }
 
 // 处理编辑卡片点击
-const handleEditCardClick = () => {
+const handleEditCardClick = async () => {
   if (selectedCard.value) {
+    try {
+      // 从数据库获取最新的卡片数据，确保包含最新的菜单项
+      const latestCard = await window.electronAPI.invoke<Card>('api:cards:getById', selectedCard.value.id)
+      if (latestCard) {
+        selectedCard.value = latestCard
+      }
+    } catch (error) {
+      console.error('Failed to get latest card data:', error)
+    }
+    
     showEditDialog.value = true
     contextMenuVisible.value = false
   }

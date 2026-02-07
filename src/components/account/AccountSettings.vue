@@ -1,6 +1,9 @@
 <template>
-  <div class="account-settings-overlay" @click="closeSettings">
-    <div class="account-settings-dialog" @click.stop>
+  <Dialog
+    :visible="true"
+    @close="closeSettings"
+  >
+    <div class="account-settings-content">
       <!-- 左侧菜单 -->
       <div class="left-menu">
         <div class="menu-content">
@@ -31,9 +34,6 @@
       <div class="right-content">
         <div class="content-header">
           <h4>{{ tabTitles[activeTab] }}</h4>
-          <button class="close-btn" @click="closeSettings">
-            <span class="i-carbon-close"></span>
-          </button>
         </div>
         <div class="content-body">
           <!-- 动态渲染所有设置面板 -->
@@ -66,7 +66,7 @@
         </div>
       </div>
     </div>
-  </div>
+  </Dialog>
 </template>
 
 <script setup lang="ts">
@@ -75,6 +75,7 @@ import { useAuth } from '@/composables/useAuth'
 import { useRouter } from 'vue-router'
 import { useTabs } from '@/composables/useTabs'
 import { ElMessageBox } from 'element-plus'
+import Dialog from '../common/Dialog.vue'
 
 const emit = defineEmits<{
   close: []
@@ -262,39 +263,12 @@ const handleTabClick = (item: any) => {
 </script>
 
 <style scoped>
-.account-settings-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+/* 账号设置内容容器 */
+.account-settings-content {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  animation: fadeIn 0.2s ease;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.account-settings-dialog {
-  display: flex;
-  width: 900px;
-  height: 650px;
-  background-color: white;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  width: 100%;
+  height: 100%;
   overflow: hidden;
-  animation: slideIn 0.3s ease;
-}
-
-@keyframes slideIn {
-  from { transform: translateY(-20px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
 }
 
 /* 左侧菜单样式 */
@@ -397,50 +371,6 @@ const handleTabClick = (item: any) => {
   font-size: 14px;
   font-weight: 600;
   color: #333;
-}
-
-.close-btn {
-  background: transparent;
-  border: none;
-  font-size: 18px;
-  cursor: pointer;
-  padding: 0;
-  border-radius: 0;
-  color: #999;
-  outline: none;
-  box-shadow: none;
-  width: auto;
-  height: auto;
-  min-width: auto;
-  line-height: 1;
-}
-
-.close-btn:hover {
-  background-color: transparent;
-  color: #666;
-  box-shadow: none !important;
-  transform: none;
-}
-
-.close-btn:focus,
-.close-btn:active,
-.close-btn:focus-visible {
-  outline: none !important;
-  box-shadow: none !important;
-  background-color: transparent !important;
-}
-
-/* 确保图标元素样式 */
-.close-btn span {
-  display: inline-block;
-  padding: 4px;
-  outline: none;
-  box-shadow: none;
-  transition: color 0.2s ease;
-}
-
-.close-btn:hover span {
-  color: #666;
 }
 
 .content-body {

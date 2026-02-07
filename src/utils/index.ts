@@ -33,7 +33,8 @@ export const generateDefaultMenuItem = (order: number = 1) => {
     showInMenu: true,
     showInTabs: false,
     requiresAuth: true,
-    order
+    order,
+    createdAt: new Date().toISOString()
   }
 }
 

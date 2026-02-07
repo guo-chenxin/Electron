@@ -22,6 +22,8 @@ export interface MenuItem {
   requiresAuth?: boolean;
   /** 菜单顺序 */
   order?: number;
+  /** 创建时间 */
+  createdAt?: string;
 }
 
 /**
