@@ -6,7 +6,7 @@
         v-for="card in cards" 
         :key="card.id"
         class="card-container"
-        @contextmenu.prevent="showContextMenu($event, card)"
+        @contextmenu="handleContextMenu($event, card)"
       >
         <ProjectCard 
           :title="card.title"
@@ -40,23 +40,6 @@
       @save="handleEditCard" 
       @close="showEditDialog = false" 
     />
-    
-    <!-- 右键菜单 -->
-    <div 
-      v-if="contextMenuVisible" 
-      class="context-menu"
-      :style="{ left: contextMenuPosition.x + 'px', top: contextMenuPosition.y + 'px' }"
-      @click.stop
-    >
-      <el-menu class="context-menu-items">
-        <el-menu-item index="1" @click="handleEditCardClick">
-          <span>编辑卡片</span>
-        </el-menu-item>
-        <el-menu-item index="2" @click="handleDeleteCardClick">
-          <span>删除卡片</span>
-        </el-menu-item>
-      </el-menu>
-    </div>
   </div>
 </template>
 
@@ -67,17 +50,9 @@ import { ElMessageBox } from 'element-plus'
 import { messageManager } from '../../utils/messageManager'
 import ProjectCard from '../../components/main-window/ProjectCard.vue'
 import AddCardDialog from '../../components/main-window/AddCardDialog.vue'
+
 import { loadDynamicRoutes } from '../../router'
 import { fetchRoutesForTabs } from '../../composables/useTabs'
-
-// 添加electron的类型声明
-declare global {
-  interface Window {
-    electronAPI: {
-      invoke: <T = any>(channel: string, ...args: any[]) => Promise<T>
-    }
-  }
-}
 
 const router = useRouter()
 const showAddDialog = ref(false)
@@ -113,9 +88,7 @@ interface Card {
 // 卡片数据 - 初始为空数组，不显示默认卡片
 const cards = ref<Card[]>([])
 
-// 右键菜单相关状态
-const contextMenuVisible = ref(false)
-const contextMenuPosition = ref({ x: 0, y: 0 })
+// 选中的卡片
 const selectedCard = ref<Card | null>(null)
 
 // 计算属性：将selectedCard转换为CardData类型
@@ -152,43 +125,43 @@ const loadCards = async () => {
   }
 }
 
+// 存储IPC事件监听器的清理函数
+let editCardListenerCleanup: (() => void) | undefined
+let deleteCardListenerCleanup: (() => void) | undefined
+
 // 组件挂载时加载卡片数据
 onMounted(() => {
   loadCards()
-  // 添加点击空白处关闭右键菜单的事件
-  document.addEventListener('click', handleClickOutside)
-  // 添加全局右键菜单事件，防止默认右键菜单
-  document.addEventListener('contextmenu', handleGlobalContextMenu)
+  
+  // 添加IPC事件监听器，处理右键菜单事件
+  const electronAPI = window.electronAPI as any
+  if (electronAPI && electronAPI.on) {
+    editCardListenerCleanup = electronAPI.on('context-menu:edit-card', () => handleEditCardClick())
+    deleteCardListenerCleanup = electronAPI.on('context-menu:delete-card', () => handleDeleteCardClick())
+  }
 })
 
 // 组件卸载时移除事件监听器
 onUnmounted(() => {
-  document.removeEventListener('click', handleClickOutside)
-  document.removeEventListener('contextmenu', handleGlobalContextMenu)
+  // 移除IPC事件监听器
+  if (editCardListenerCleanup) {
+    editCardListenerCleanup()
+  }
+  if (deleteCardListenerCleanup) {
+    deleteCardListenerCleanup()
+  }
 })
 
-// 处理点击空白处关闭右键菜单
-const handleClickOutside = () => {
-  contextMenuVisible.value = false
-}
-
-// 处理全局右键菜单事件
-const handleGlobalContextMenu = (event: MouseEvent) => {
-  // 只有当右键菜单可见时才阻止默认行为
-  if (contextMenuVisible.value) {
-    event.preventDefault()
-  }
-}
-
-// 显示右键菜单
-const showContextMenu = (event: MouseEvent, card: Card) => {
-  event.preventDefault()
-  contextMenuPosition.value = {
-    x: event.clientX,
-    y: event.clientY
-  }
+// 处理右键菜单事件
+const handleContextMenu = (event: MouseEvent, card: Card) => {
+  // 设置选中的卡片
   selectedCard.value = card
-  contextMenuVisible.value = true
+  
+  // 阻止默认的上下文菜单
+  event.preventDefault()
+  
+  // 通过IPC通知主进程显示卡片右键菜单
+  window.electronAPI.invoke('context-menu:show-card-menu')
 }
 
 // 导航到卡片对应的路由
@@ -250,7 +223,6 @@ const handleEditCardClick = async () => {
     }
     
     showEditDialog.value = true
-    contextMenuVisible.value = false
   }
 }
 
@@ -322,7 +294,6 @@ const handleDeleteCardClick = async () => {
     await fetchRoutesForTabs()
     
     messageManager.success('卡片删除成功')
-    contextMenuVisible.value = false
   } catch (error: any) {
     if (error !== 'cancel') {
       console.error('Failed to delete card:', error)
@@ -391,36 +362,4 @@ const handleDeleteCardClick = async () => {
   font-weight: 500;
 }
 
-/* 右键菜单样式 */
-.context-menu {
-  position: fixed;
-  z-index: 10000;
-  background: #ffffff;
-  border-radius: 4px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-  padding: 4px 0;
-  min-width: 160px;
-}
-
-.context-menu-items {
-  border: none;
-  box-shadow: none;
-}
-
-.context-menu-items .el-menu-item {
-  height: 36px;
-  line-height: 36px;
-  padding: 0 16px;
-  margin: 0;
-  font-size: 14px;
-}
-
-.context-menu-items .el-menu-item:hover {
-  background-color: #ecf5ff;
-}
-
-.context-menu-items .el-menu-item.is-active {
-  background-color: #ecf5ff;
-  color: #409eff;
-}
 </style>

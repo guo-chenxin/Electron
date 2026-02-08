@@ -14,10 +14,11 @@
     "noEmit": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "windowManager": ["./electron/main/backend/utils/windowManager.ts"]
     }
   },
-  "include": ["src", "src/typed-router.d.ts"],
+  "include": ["src", "src/typed-router.d.ts", "src/types"],
   "references": [
     { "path": "./tsconfig.node.json" }
   ]

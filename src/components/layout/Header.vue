@@ -57,7 +57,7 @@
               </button>
             </div>
             <!-- 用户菜单 -->
-            <ElDropdown trigger="hover">
+            <ElDropdown trigger="hover" :popper-options="{ modifiers: [{ name: 'computeStyles', options: { adaptive: false } }] }">
               <button class="btn window-btn user-btn">
                 <ElAvatar :size="24" :src="currentUser?.avatarUrl || ''" :icon="defaultAvatar" />
               </button>

@@ -6,6 +6,7 @@ import { db } from '../db/database';
 import { Route, CreateRouteRequest, UpdateRouteRequest } from '../models';
 import { BaseService } from './baseService';
 import { convertUtcToLocal, getCurrentLocalTimeForSqlite } from '../utils/dateUtils';
+import { ErrorHandler } from '../utils/errorUtils';
 
 
 
@@ -48,7 +49,7 @@ export class RouteService extends BaseService<Route, CreateRouteRequest, UpdateR
   private validateRoutePathUnique(path: string): void {
     const existingRoute = this.getAll().find(route => route.path === path);
     if (existingRoute) {
-      throw new Error(`Route with path "${path}" already exists`);
+      throw ErrorHandler.createValidationError(`Route with path "${path}" already exists`);
     }
   }
 
@@ -59,7 +60,7 @@ export class RouteService extends BaseService<Route, CreateRouteRequest, UpdateR
   private validateParentRouteExists(parentId: number): void {
     const parentRoute = this.getById(parentId);
     if (!parentRoute) {
-      throw new Error(`Parent route with ID "${parentId}" does not exist`);
+      throw ErrorHandler.createNotFoundError(`Parent route with ID "${parentId}" does not exist`);
     }
   }
 
@@ -70,12 +71,12 @@ export class RouteService extends BaseService<Route, CreateRouteRequest, UpdateR
   private validateRoutePathFormat(path: string): void {
     // 确保路径以斜杠开头
     if (!path.startsWith('/')) {
-      throw new Error(`Route path "${path}" must start with a slash`);
+      throw ErrorHandler.createValidationError(`Route path "${path}" must start with a slash`);
     }
     
     // 避免重复斜杠
     if (path.includes('//')) {
-      throw new Error(`Route path "${path}" contains duplicate slashes`);
+      throw ErrorHandler.createValidationError(`Route path "${path}" contains duplicate slashes`);
     }
   }
 
@@ -187,7 +188,7 @@ export class RouteService extends BaseService<Route, CreateRouteRequest, UpdateR
   create(data: CreateRouteRequest): Route | null {
     // 验证必填字段
     if (!data.path) {
-      throw new Error('Path is required');
+      throw ErrorHandler.createValidationError('Path is required');
     }
     
     // 验证路由路径唯一性

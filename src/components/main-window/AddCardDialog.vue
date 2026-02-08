@@ -74,7 +74,7 @@
             </el-form-item>
             
             <el-form-item label="项目图标" prop="icon">
-              <el-select v-model="projectForm.icon" placeholder="请选择项目图标" popper-class="icon-grid-select-popper">
+              <el-select v-model="projectForm.icon" placeholder="请选择项目图标" popper-class="icon-grid-select-popper" :popper-options="{ modifiers: [{ name: 'computeStyles', options: { adaptive: false } }] }">
                 <template #prefix>
                   <span class="selected-icon" :class="projectForm.icon"></span>
                 </template>
@@ -129,7 +129,7 @@
             </el-form-item>
             
             <el-form-item label="图标" prop="icon">
-              <el-select v-model="projectForm.menuItems[selectedItem.index].icon" placeholder="请选择菜单项图标" popper-class="icon-grid-select-popper">
+              <el-select v-model="projectForm.menuItems[selectedItem.index].icon" placeholder="请选择菜单项图标" popper-class="icon-grid-select-popper" :popper-options="{ modifiers: [{ name: 'computeStyles', options: { adaptive: false } }] }">
                 <template #prefix>
                   <span class="selected-icon" :class="projectForm.menuItems[selectedItem.index].icon"></span>
                 </template>
@@ -224,53 +224,57 @@ const selectedItem = reactive<SelectedItem>({
 // 项目表单数据
 const projectForm = reactive<ProjectFormData>(generateDefaultProjectForm())
 
+// 加载卡片数据
+const loadCardData = (data: CardData) => {
+  // 深拷贝数据，确保不会影响原始数据
+  const clonedCardData = deepClone(data)
+  
+  // 回显项目数据
+  projectForm.title = clonedCardData.title || ''
+  projectForm.description = clonedCardData.description || ''
+  projectForm.icon = clonedCardData.icon || 'i-carbon-star'
+  projectForm.routePath = clonedCardData.routePath || ''
+  projectForm.redirect = clonedCardData.redirect || ''
+  projectForm.showInMenu = clonedCardData.showInMenu !== undefined ? clonedCardData.showInMenu : true
+  projectForm.showInTabs = clonedCardData.showInTabs !== undefined ? clonedCardData.showInTabs : true
+  projectForm.requiresAuth = clonedCardData.requiresAuth !== undefined ? clonedCardData.requiresAuth : false
+  projectForm.order = clonedCardData.order !== undefined ? clonedCardData.order : 999
+  
+  // 回显菜单项数据
+  if (Array.isArray(clonedCardData.menuItems)) {
+    projectForm.menuItems = clonedCardData.menuItems.map((item) => ({
+      id: item.id, // 包含id字段
+      title: item.title || '',
+      icon: item.icon || 'i-carbon-home',
+      routePath: item.routePath || '',
+      component: item.component || '',
+      showInMenu: item.showInMenu !== undefined ? item.showInMenu : true,
+      showInTabs: item.showInTabs !== undefined ? item.showInTabs : false,
+      requiresAuth: item.requiresAuth !== undefined ? item.requiresAuth : true,
+      order: item.order !== undefined ? item.order : 1,
+      createdAt: item.createdAt || new Date().toISOString()
+    })).sort((a, b) => {
+      // 首先按照order字段排序，order相同则按照创建时间排序
+      if ((a.order || 0) !== (b.order || 0)) {
+        return (a.order || 0) - (b.order || 0)
+      }
+      // order相同则按照创建时间排序
+      return new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
+    })
+  } else {
+    // 如果没有菜单项，添加默认菜单项
+    projectForm.menuItems = [generateDefaultMenuItem(1)]
+  }
+  
+  // 重置选中状态
+  selectedItem.type = 'root'
+  selectedItem.index = null
+}
+
 // 监听visible变化
 watch(() => visible, (newVal) => {
-  // 当对话框打开时，重新回显项目数据
   if (newVal && cardData) {
-    // 深拷贝数据，确保不会影响原始数据
-    const clonedCardData = deepClone(cardData)
-    
-    // 回显项目数据
-    projectForm.title = clonedCardData.title || ''
-    projectForm.description = clonedCardData.description || ''
-    projectForm.icon = clonedCardData.icon || 'i-carbon-star'
-    projectForm.routePath = clonedCardData.routePath || ''
-    projectForm.redirect = clonedCardData.redirect || ''
-    projectForm.showInMenu = clonedCardData.showInMenu !== undefined ? clonedCardData.showInMenu : true
-    projectForm.showInTabs = clonedCardData.showInTabs !== undefined ? clonedCardData.showInTabs : true
-    projectForm.requiresAuth = clonedCardData.requiresAuth !== undefined ? clonedCardData.requiresAuth : false
-    projectForm.order = clonedCardData.order !== undefined ? clonedCardData.order : 999
-    
-    // 回显菜单项数据
-    if (Array.isArray(clonedCardData.menuItems)) {
-      projectForm.menuItems = clonedCardData.menuItems.map((item) => ({
-        id: item.id, // 包含id字段
-        title: item.title || '',
-        icon: item.icon || 'i-carbon-home',
-        routePath: item.routePath || '',
-        component: item.component || '',
-        showInMenu: item.showInMenu !== undefined ? item.showInMenu : true,
-        showInTabs: item.showInTabs !== undefined ? item.showInTabs : false,
-        requiresAuth: item.requiresAuth !== undefined ? item.requiresAuth : true,
-        order: item.order !== undefined ? item.order : 1,
-        createdAt: item.createdAt || new Date().toISOString()
-      })).sort((a, b) => {
-        // 首先按照order字段排序，order相同则按照创建时间排序
-        if ((a.order || 0) !== (b.order || 0)) {
-          return (a.order || 0) - (b.order || 0)
-        }
-        // order相同则按照创建时间排序
-        return new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
-      })
-    } else {
-      // 如果没有菜单项，添加默认菜单项
-      projectForm.menuItems = [generateDefaultMenuItem(1)]
-    }
-    
-    // 重置选中状态
-    selectedItem.type = 'root'
-    selectedItem.index = null
+    loadCardData(cardData)
   } else if (!newVal) {
     // 当对话框关闭时，重置表单数据
     setTimeout(() => {
@@ -282,49 +286,7 @@ watch(() => visible, (newVal) => {
 // 监听cardData变化，用于编辑项目时回显数据
 watch(() => cardData, (newVal) => {
   if (newVal && visible) {
-    // 深拷贝数据，确保不会影响原始数据
-    const clonedCardData = deepClone(newVal)
-    
-    // 回显项目数据
-    projectForm.title = clonedCardData.title || ''
-    projectForm.description = clonedCardData.description || ''
-    projectForm.icon = clonedCardData.icon || 'i-carbon-star'
-    projectForm.routePath = clonedCardData.routePath || ''
-    projectForm.redirect = clonedCardData.redirect || ''
-    projectForm.showInMenu = clonedCardData.showInMenu !== undefined ? clonedCardData.showInMenu : true
-    projectForm.showInTabs = clonedCardData.showInTabs !== undefined ? clonedCardData.showInTabs : true
-    projectForm.requiresAuth = clonedCardData.requiresAuth !== undefined ? clonedCardData.requiresAuth : false
-    projectForm.order = clonedCardData.order !== undefined ? clonedCardData.order : 999
-    
-    // 回显菜单项数据
-    if (Array.isArray(clonedCardData.menuItems)) {
-      projectForm.menuItems = clonedCardData.menuItems.map((item) => ({
-        id: item.id, // 包含id字段
-        title: item.title || '',
-        icon: item.icon || 'i-carbon-home',
-        routePath: item.routePath || '',
-        component: item.component || '',
-        showInMenu: item.showInMenu !== undefined ? item.showInMenu : true,
-        showInTabs: item.showInTabs !== undefined ? item.showInTabs : false,
-        requiresAuth: item.requiresAuth !== undefined ? item.requiresAuth : true,
-        order: item.order !== undefined ? item.order : 1,
-        createdAt: item.createdAt || new Date().toISOString()
-      })).sort((a, b) => {
-        // 首先按照order字段排序，order相同则按照创建时间排序
-        if ((a.order || 0) !== (b.order || 0)) {
-          return (a.order || 0) - (b.order || 0)
-        }
-        // order相同则按照创建时间排序
-        return new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
-      })
-    } else {
-      // 如果没有菜单项，添加默认菜单项
-      projectForm.menuItems = [generateDefaultMenuItem(1)]
-    }
-    
-    // 重置选中状态
-    selectedItem.type = 'root'
-    selectedItem.index = null
+    loadCardData(newVal)
   }
 }, { deep: true })
 

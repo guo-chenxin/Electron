@@ -4,6 +4,8 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import electron from 'vite-plugin-electron/simple'
 import UnoCSS from 'unocss/vite'
+import checker from 'vite-plugin-checker'
+import inspect from 'vite-plugin-inspect'
 import pkg from './package.json'
 
 // https://vitejs.dev/config/
@@ -17,12 +19,27 @@ export default defineConfig(async ({ command }) => {
   return {
     resolve: {
       alias: {
-        '@': '/src'
+        '@': '/src',
+        'windowManager': './electron/main/backend/utils/windowManager.ts'
       }
     },
     plugins: [
       UnoCSS(),
       vue(),
+      checker({
+        typescript: true,
+        // 暂时禁用ESLint，因为ESLint 9版本与vite-plugin-checker不兼容
+        // eslint: {
+        //   lintCommand: 'eslint "./src/**/*.{ts,tsx,vue,js}"'
+        // },
+        vueTsc: true,
+        overlay: true
+      }),
+
+      inspect({
+        open: true
+      }),
+
       electron({
         main: {
           // Shortcut of `build.lib.entry`
@@ -35,6 +52,14 @@ export default defineConfig(async ({ command }) => {
             }
           },
           vite: {
+            server: {
+              // 优化开发服务器配置
+              watch: {
+                // 减少监听延迟
+                usePolling: true,
+                interval: 100
+              }
+            },
             build: {
               sourcemap,
               minify: isBuild,
@@ -91,7 +116,7 @@ export default defineConfig(async ({ command }) => {
         // Ployfill the Electron and Node.js API for Renderer process.
         // If you want use Node.js in Renderer process, the `nodeIntegration` needs to be enabled in the Main process.
         // See 👉 https://github.com/electron-vite/vite-plugin-electron-renderer
-        renderer: {},
+        renderer: {}
       }),
     ],
     optimizeDeps: {
